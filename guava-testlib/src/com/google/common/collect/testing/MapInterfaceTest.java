@@ -30,17 +30,21 @@ import java.util.Set;
 import junit.framework.TestCase;
 
 /**
- * Tests representing the contract of {@link Map}. Concrete subclasses of this base class test
- * conformance of concrete {@link Map} subclasses to that contract.
+ * Tests representing the contract of {@link Map}. Concrete subclasses of this
+ * base class test conformance of concrete {@link Map} subclasses to that
+ * contract.
+ *
+ * TODO: Descriptive assertion messages, with hints as to probable
+ * fixes.
+ * TODO: Add another constructor parameter indicating whether the
+ * class under test is ordered, and check the order if so.
+ * TODO: Refactor to share code with SetTestBuilder &c.
  *
  * @param <K> the type of keys used by the maps under test
  * @param <V> the type of mapped values used the maps under test
+ *
  * @author George van den Driessche
  */
-// TODO: Descriptive assertion messages, with hints as to probable fixes.
-// TODO: Add another constructor parameter indicating whether the class under test is ordered, and
-// check the order if so.
-// TODO: Refactor to share code with SetTestBuilder etc.
 @GwtCompatible
 public abstract class MapInterfaceTest<K, V> extends TestCase {
 
@@ -206,7 +210,7 @@ public abstract class MapInterfaceTest<K, V> extends TestCase {
     assertEquals(map.size(), entrySet.size());
     assertEquals(entrySet.size() == 0, entrySet.isEmpty());
     assertEquals(!entrySet.isEmpty(), entrySet.iterator().hasNext());
-    assertEntrySetNotContainsString(entrySet);
+    assertFalse(entrySet.contains("foo"));
 
     boolean supportsValuesHashCode = supportsValuesHashCode(map);
     if (supportsValuesHashCode) {
@@ -254,12 +258,6 @@ public abstract class MapInterfaceTest<K, V> extends TestCase {
     }
 
     assertMoreInvariants(map);
-  }
-
-  @SuppressWarnings("CollectionIncompatibleType")
-  private void assertEntrySetNotContainsString(Set<Entry<K, V>> entrySet) {
-    // Very unlikely that a buggy collection would ever return true. It might accidentally throw.
-    assertFalse(entrySet.contains("foo"));
   }
 
   /**

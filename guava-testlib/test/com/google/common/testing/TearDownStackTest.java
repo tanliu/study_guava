@@ -117,11 +117,9 @@ public class TearDownStackTest extends TestCase {
 
       @Override
       public void tearDown() throws Exception {
-        synchronized (result.stack) {
-          assertEquals(
-            "The test should have cleared the stack (say, by virtue of running runTearDown)",
-            0, result.stack.size());
-        }
+        assertEquals(
+          "The test should have cleared the stack (say, by virtue of running runTearDown)",
+          0, result.stack.size());
       }
     });
     return result;

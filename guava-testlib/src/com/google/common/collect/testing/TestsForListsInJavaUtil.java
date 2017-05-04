@@ -16,13 +16,10 @@
 
 package com.google.common.collect.testing;
 
-import static com.google.common.collect.testing.testers.CollectionSpliteratorTester.getSpliteratorNotImmutableCollectionAllowsAddMethod;
-import static com.google.common.collect.testing.testers.CollectionSpliteratorTester.getSpliteratorNotImmutableCollectionAllowsRemoveMethod;
 import static com.google.common.collect.testing.testers.ListListIteratorTester.getListIteratorFullyModifiableMethod;
 import static com.google.common.collect.testing.testers.ListSubListTester.getSubListOriginalListSetAffectsSubListLargeListMethod;
 import static com.google.common.collect.testing.testers.ListSubListTester.getSubListOriginalListSetAffectsSubListMethod;
 import static com.google.common.collect.testing.testers.ListSubListTester.getSubListSubListRemoveAffectsOriginalLargeListMethod;
-import static java.util.Arrays.asList;
 
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.collect.testing.features.CollectionFeature;
@@ -93,13 +90,11 @@ public class TestsForListsInJavaUtil {
   }
 
   protected Collection<Method> suppressForCopyOnWriteArrayList() {
-    return asList(
+    return Arrays.asList(
         getSubListOriginalListSetAffectsSubListMethod(),
         getSubListOriginalListSetAffectsSubListLargeListMethod(),
         getSubListSubListRemoveAffectsOriginalLargeListMethod(),
-        getListIteratorFullyModifiableMethod(),
-        getSpliteratorNotImmutableCollectionAllowsAddMethod(),
-        getSpliteratorNotImmutableCollectionAllowsRemoveMethod());
+        getListIteratorFullyModifiableMethod());
   }
 
   protected Collection<Method> suppressForUnmodifiableList() {

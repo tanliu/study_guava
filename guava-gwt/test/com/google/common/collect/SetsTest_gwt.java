@@ -323,14 +323,4 @@ public void testPowerSetSize() throws Exception {
   com.google.common.collect.SetsTest testCase = new com.google.common.collect.SetsTest();
   testCase.testPowerSetSize();
 }
-
-public void testToImmutableEnumSet() throws Exception {
-  com.google.common.collect.SetsTest testCase = new com.google.common.collect.SetsTest();
-  testCase.testToImmutableEnumSet();
-}
-
-public void testToImmutableEnumSetEmpty() throws Exception {
-  com.google.common.collect.SetsTest testCase = new com.google.common.collect.SetsTest();
-  testCase.testToImmutableEnumSetEmpty();
-}
 }

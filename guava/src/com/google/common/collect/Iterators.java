@@ -69,6 +69,39 @@ import javax.annotation.Nullable;
 public final class Iterators {
   private Iterators() {}
 
+  static final UnmodifiableListIterator<Object> EMPTY_LIST_ITERATOR =
+      new UnmodifiableListIterator<Object>() {
+        @Override
+        public boolean hasNext() {
+          return false;
+        }
+
+        @Override
+        public Object next() {
+          throw new NoSuchElementException();
+        }
+
+        @Override
+        public boolean hasPrevious() {
+          return false;
+        }
+
+        @Override
+        public Object previous() {
+          throw new NoSuchElementException();
+        }
+
+        @Override
+        public int nextIndex() {
+          return 0;
+        }
+
+        @Override
+        public int previousIndex() {
+          return -1;
+        }
+      };
+
   /**
    * Returns the empty iterator.
    *
@@ -88,31 +121,26 @@ public final class Iterators {
   // Casting to any type is safe since there are no actual elements.
   @SuppressWarnings("unchecked")
   static <T> UnmodifiableListIterator<T> emptyListIterator() {
-    return (UnmodifiableListIterator<T>) ArrayItr.EMPTY;
+    return (UnmodifiableListIterator<T>) EMPTY_LIST_ITERATOR;
   }
 
-  /**
-   * This is an enum singleton rather than an anonymous class so ProGuard can figure out it's only
-   * referenced by emptyModifiableIterator().
-   */
-  private enum EmptyModifiableIterator implements Iterator<Object> {
-    INSTANCE;
+  private static final Iterator<Object> EMPTY_MODIFIABLE_ITERATOR =
+      new Iterator<Object>() {
+        @Override
+        public boolean hasNext() {
+          return false;
+        }
 
-    @Override
-    public boolean hasNext() {
-      return false;
-    }
+        @Override
+        public Object next() {
+          throw new NoSuchElementException();
+        }
 
-    @Override
-    public Object next() {
-      throw new NoSuchElementException();
-    }
-
-    @Override
-    public void remove() {
-      checkRemove(false);
-    }
-  }
+        @Override
+        public void remove() {
+          checkRemove(false);
+        }
+      };
 
   /**
    * Returns the empty {@code Iterator} that throws
@@ -123,7 +151,7 @@ public final class Iterators {
   // Casting to any type is safe since there are no actual elements.
   @SuppressWarnings("unchecked")
   static <T> Iterator<T> emptyModifiableIterator() {
-    return (Iterator<T>) EmptyModifiableIterator.INSTANCE;
+    return (Iterator<T>) EMPTY_MODIFIABLE_ITERATOR;
   }
 
   /** Returns an unmodifiable view of {@code iterator}. */
@@ -177,20 +205,7 @@ public final class Iterators {
    * Returns {@code true} if {@code iterator} contains {@code element}.
    */
   public static boolean contains(Iterator<?> iterator, @Nullable Object element) {
-    if (element == null) {
-      while (iterator.hasNext()) {
-        if (iterator.next() == null) {
-          return true;
-        }
-      }
-    } else {
-      while (iterator.hasNext()) {
-        if (element.equals(iterator.next())) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return any(iterator, equalTo(element));
   }
 
   /**
@@ -204,15 +219,7 @@ public final class Iterators {
    */
   @CanIgnoreReturnValue
   public static boolean removeAll(Iterator<?> removeFrom, Collection<?> elementsToRemove) {
-    checkNotNull(elementsToRemove);
-    boolean result = false;
-    while (removeFrom.hasNext()) {
-      if (elementsToRemove.contains(removeFrom.next())) {
-        removeFrom.remove();
-        result = true;
-      }
-    }
-    return result;
+    return removeIf(removeFrom, in(elementsToRemove));
   }
 
   /**
@@ -250,15 +257,7 @@ public final class Iterators {
    */
   @CanIgnoreReturnValue
   public static boolean retainAll(Iterator<?> removeFrom, Collection<?> elementsToRetain) {
-    checkNotNull(elementsToRetain);
-    boolean result = false;
-    while (removeFrom.hasNext()) {
-      if (!elementsToRetain.contains(removeFrom.next())) {
-        removeFrom.remove();
-        result = true;
-      }
-    }
-    return result;
+    return removeIf(removeFrom, not(in(elementsToRetain)));
   }
 
   /**
@@ -291,16 +290,10 @@ public final class Iterators {
    * {@code hasNext()} method will return {@code false}.
    */
   public static String toString(Iterator<?> iterator) {
-    StringBuilder sb = new StringBuilder().append('[');
-    boolean first = true;
-    while (iterator.hasNext()) {
-      if (!first) {
-        sb.append(", ");
-      }
-      first = false;
-      sb.append(iterator.next());
-    }
-    return sb.append(']').toString();
+    return Collections2.STANDARD_JOINER
+        .appendTo(new StringBuilder().append('['), iterator)
+        .append(']')
+        .toString();
   }
 
   /**
@@ -991,25 +984,6 @@ public final class Iterators {
     return forArray(array, 0, array.length, 0);
   }
 
-  private static final class ArrayItr<T> extends AbstractIndexedListIterator<T> {
-    static final UnmodifiableListIterator<Object> EMPTY = new ArrayItr<Object>(
-        new Object[0], 0, 0, 0);
-
-    private final T[] array;
-    private final int offset;
-
-    ArrayItr(T[] array, int offset, int length, int index) {
-      super(length, index);
-      this.array = array;
-      this.offset = offset;
-    }
-
-    @Override
-    protected T get(int index) {
-      return array[offset + index];
-    }
-  }
-
   /**
    * Returns a list iterator containing the elements in the specified range of
    * {@code array} in order, starting at the specified index.
@@ -1028,7 +1002,18 @@ public final class Iterators {
     if (length == 0) {
       return emptyListIterator();
     }
-    return new ArrayItr<T>(array, offset, length, index);
+
+    /*
+     * We can't use call the two-arg constructor with arguments (offset, end)
+     * because the returned Iterator is a ListIterator that may be moved back
+     * past the beginning of the iteration.
+     */
+    return new AbstractIndexedListIterator<T>(length, index) {
+      @Override
+      protected T get(int index) {
+        return array[offset + index];
+      }
+    };
   }
 
   /**

@@ -255,10 +255,7 @@ public abstract class Invokable<T, R> extends Element implements GenericDeclarat
       }
     }
 
-    /**
-     * If the class is parameterized, such as {@link java.util.ArrayList ArrayList}, this returns
-     * {@code ArrayList<E>}.
-     */
+    /** If the class is parameterized, such as ArrayList, this returns ArrayList<E>. */
     @Override
     Type getGenericReturnType() {
       Class<?> declaringClass = getDeclaringClass();

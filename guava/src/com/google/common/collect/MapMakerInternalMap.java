@@ -20,7 +20,6 @@ import static com.google.common.collect.CollectPreconditions.checkRemove;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Equivalence;
-import com.google.common.collect.MapMaker.Dummy;
 import com.google.common.primitives.Ints;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.j2objc.annotations.Weak;
@@ -65,7 +64,6 @@ import javax.annotation.concurrent.GuardedBy;
  */
 // TODO(kak/cpovirk): Consider removing @CanIgnoreReturnValue from this class.
 @GwtIncompatible
-@SuppressWarnings("GuardedBy") // TODO(b/35466881): Fix or suppress.
 class MapMakerInternalMap<
         K,
         V,
@@ -99,8 +97,8 @@ class MapMakerInternalMap<
 
   /**
    * The maximum capacity, used if a higher value is implicitly specified by either of the
-   * constructors with arguments. MUST be a power of two no greater than {@code 1<<30} to ensure
-   * that entries are indexable using ints.
+   * constructors with arguments. MUST be a power of two <= 1<<30 to ensure that entries are
+   * indexable using ints.
    */
   static final int MAXIMUM_CAPACITY = Ints.MAX_POWER_OF_TWO;
 
@@ -193,7 +191,6 @@ class MapMakerInternalMap<
     }
   }
 
-  /** Returns a fresh {@link MapMakerInternalMap} as specified by the given {@code builder}. */
   static <K, V> MapMakerInternalMap<K, V, ? extends InternalEntry<K, V, ?>, ?> create(
       MapMaker builder) {
     if (builder.getKeyStrength() == Strength.STRONG
@@ -218,37 +215,6 @@ class MapMakerInternalMap<
       return new MapMakerInternalMap<
           K, V, WeakKeyWeakValueEntry<K, V>, WeakKeyWeakValueSegment<K, V>>(
           builder, WeakKeyWeakValueEntry.Helper.<K, V>instance());
-    }
-    throw new AssertionError();
-  }
-
-  /**
-   * Returns a fresh {@link MapMakerInternalMap} with {@link MapMaker.Dummy} values but otherwise as
-   * specified by the given {@code builder}. The returned {@link MapMakerInternalMap} will be
-   * optimized to saved memory. Since {@link MapMaker.Dummy} is a singleton, we don't need to store
-   * any values at all. Because of this optimization, {@code build.getValueStrength()} must
-   * be {@link Strength#STRONG}.
-   *
-   * <p>This method is intended to only be used by the internal implementation of {@link Interners},
-   * since a map of dummy values is the exact use case there.
-   */
-  static <K>
-      MapMakerInternalMap<K, Dummy, ? extends InternalEntry<K, Dummy, ?>, ?> createWithDummyValues(
-          MapMaker builder) {
-    if (builder.getKeyStrength() == Strength.STRONG
-        && builder.getValueStrength() == Strength.STRONG) {
-      return new MapMakerInternalMap<
-          K, Dummy, StrongKeyDummyValueEntry<K>, StrongKeyDummyValueSegment<K>>(
-          builder, StrongKeyDummyValueEntry.Helper.<K>instance());
-    }
-    if (builder.getKeyStrength() == Strength.WEAK
-        && builder.getValueStrength() == Strength.STRONG) {
-      return new MapMakerInternalMap<
-          K, Dummy, WeakKeyDummyValueEntry<K>, WeakKeyDummyValueSegment<K>>(
-          builder, WeakKeyDummyValueEntry.Helper.<K>instance());
-    }
-    if (builder.getValueStrength() == Strength.WEAK) {
-      throw new IllegalArgumentException("Map cannot have both weak and dummy values");
     }
     throw new AssertionError();
   }
@@ -586,81 +552,6 @@ class MapMakerInternalMap<
     }
   }
 
-  /** Concrete implementation of {@link InternalEntry} for strong keys and {@link Dummy} values. */
-  static final class StrongKeyDummyValueEntry<K>
-      extends AbstractStrongKeyEntry<K, Dummy, StrongKeyDummyValueEntry<K>>
-      implements StrongValueEntry<K, Dummy, StrongKeyDummyValueEntry<K>> {
-    StrongKeyDummyValueEntry(K key, int hash, @Nullable StrongKeyDummyValueEntry<K> next) {
-      super(key, hash, next);
-    }
-
-    @Override
-    public Dummy getValue() {
-      return Dummy.VALUE;
-    }
-
-    void setValue(Dummy value) {}
-
-    StrongKeyDummyValueEntry<K> copy(StrongKeyDummyValueEntry<K> newNext) {
-      return new StrongKeyDummyValueEntry<K>(this.key, this.hash, newNext);
-    }
-
-    /**
-     * Concrete implementation of {@link InternalEntryHelper} for strong keys and {@link Dummy}
-     * values.
-     */
-    static final class Helper<K>
-        implements InternalEntryHelper<
-            K, Dummy, StrongKeyDummyValueEntry<K>, StrongKeyDummyValueSegment<K>> {
-      private static final Helper<?> INSTANCE = new Helper<Object>();
-
-      @SuppressWarnings("unchecked")
-      static <K> Helper<K> instance() {
-        return (Helper<K>) INSTANCE;
-      }
-
-      @Override
-      public Strength keyStrength() {
-        return Strength.STRONG;
-      }
-
-      @Override
-      public Strength valueStrength() {
-        return Strength.STRONG;
-      }
-
-      @Override
-      public StrongKeyDummyValueSegment<K> newSegment(
-          MapMakerInternalMap<K, Dummy, StrongKeyDummyValueEntry<K>, StrongKeyDummyValueSegment<K>>
-              map,
-          int initialCapacity,
-          int maxSegmentSize) {
-        return new StrongKeyDummyValueSegment<K>(map, initialCapacity, maxSegmentSize);
-      }
-
-      @Override
-      public StrongKeyDummyValueEntry<K> copy(
-          StrongKeyDummyValueSegment<K> segment,
-          StrongKeyDummyValueEntry<K> entry,
-          @Nullable StrongKeyDummyValueEntry<K> newNext) {
-        return entry.copy(newNext);
-      }
-
-      @Override
-      public void setValue(
-          StrongKeyDummyValueSegment<K> segment, StrongKeyDummyValueEntry<K> entry, Dummy value) {}
-
-      @Override
-      public StrongKeyDummyValueEntry<K> newEntry(
-          StrongKeyDummyValueSegment<K> segment,
-          K key,
-          int hash,
-          @Nullable StrongKeyDummyValueEntry<K> next) {
-        return new StrongKeyDummyValueEntry<K>(key, hash, next);
-      }
-    }
-  }
-
   /** Base class for {@link InternalEntry} implementations for weak keys. */
   abstract static class AbstractWeakKeyEntry<K, V, E extends InternalEntry<K, V, E>>
       extends WeakReference<K> implements InternalEntry<K, V, E> {
@@ -686,86 +577,6 @@ class MapMakerInternalMap<
     @Override
     public E getNext() {
       return next;
-    }
-  }
-
-  /** Concrete implementation of {@link InternalEntry} for weak keys and {@link Dummy} values. */
-  static final class WeakKeyDummyValueEntry<K>
-      extends AbstractWeakKeyEntry<K, Dummy, WeakKeyDummyValueEntry<K>>
-      implements StrongValueEntry<K, Dummy, WeakKeyDummyValueEntry<K>> {
-    WeakKeyDummyValueEntry(
-        ReferenceQueue<K> queue, K key, int hash, @Nullable WeakKeyDummyValueEntry<K> next) {
-      super(queue, key, hash, next);
-    }
-
-    @Override
-    public Dummy getValue() {
-      return Dummy.VALUE;
-    }
-
-    void setValue(Dummy value) {}
-
-    WeakKeyDummyValueEntry<K> copy(
-        ReferenceQueue<K> queueForKeys, WeakKeyDummyValueEntry<K> newNext) {
-      return new WeakKeyDummyValueEntry<K>(queueForKeys, getKey(), this.hash, newNext);
-    }
-
-    /**
-     * Concrete implementation of {@link InternalEntryHelper} for weak keys and {@link Dummy}
-     * values.
-     */
-    static final class Helper<K>
-        implements InternalEntryHelper<
-            K, Dummy, WeakKeyDummyValueEntry<K>, WeakKeyDummyValueSegment<K>> {
-      private static final Helper<?> INSTANCE = new Helper<Object>();
-
-      @SuppressWarnings("unchecked")
-      static <K> Helper<K> instance() {
-        return (Helper<K>) INSTANCE;
-      }
-
-      @Override
-      public Strength keyStrength() {
-        return Strength.WEAK;
-      }
-
-      @Override
-      public Strength valueStrength() {
-        return Strength.STRONG;
-      }
-
-      @Override
-      public WeakKeyDummyValueSegment<K> newSegment(
-          MapMakerInternalMap<K, Dummy, WeakKeyDummyValueEntry<K>, WeakKeyDummyValueSegment<K>> map,
-          int initialCapacity,
-          int maxSegmentSize) {
-        return new WeakKeyDummyValueSegment<K>(map, initialCapacity, maxSegmentSize);
-      }
-
-      @Override
-      public WeakKeyDummyValueEntry<K> copy(
-          WeakKeyDummyValueSegment<K> segment,
-          WeakKeyDummyValueEntry<K> entry,
-          @Nullable WeakKeyDummyValueEntry<K> newNext) {
-        if (entry.getKey() == null) {
-          // key collected
-          return null;
-        }
-        return entry.copy(segment.queueForKeys, newNext);
-      }
-
-      @Override
-      public void setValue(
-          WeakKeyDummyValueSegment<K> segment, WeakKeyDummyValueEntry<K> entry, Dummy value) {}
-
-      @Override
-      public WeakKeyDummyValueEntry<K> newEntry(
-          WeakKeyDummyValueSegment<K> segment,
-          K key,
-          int hash,
-          @Nullable WeakKeyDummyValueEntry<K> next) {
-        return new WeakKeyDummyValueEntry<K>(segment.queueForKeys, key, hash, next);
-      }
     }
   }
 
@@ -975,7 +786,7 @@ class MapMakerInternalMap<
     /** Returns the entry which contains this {@link WeakValueReference}. */
     E getEntry();
 
-    /** Unsets the referenced value. Subsequent calls to {@link #get} will return {@code null}. */
+    /** Unsets the referenced value. Subsequent calls to {@link get} will return {@code null}. */
     void clear();
 
     /**
@@ -1045,7 +856,7 @@ class MapMakerInternalMap<
   /** Concrete implementation of {@link WeakValueReference}. */
   static final class WeakValueReferenceImpl<K, V, E extends InternalEntry<K, V, E>>
       extends WeakReference<V> implements WeakValueReference<K, V, E> {
-    @Weak final E entry;
+    final E entry;
 
     WeakValueReferenceImpl(ReferenceQueue<V> queue, V referent, E entry) {
       super(referent, queue);
@@ -1308,7 +1119,7 @@ class MapMakerInternalMap<
     }
 
     /**
-     * Unsafely sets the weak value reference inside the given {@code entry} to be the given {@code
+     * Unsafely sets the weak value reference inside the given {@code entry} to be the given {@link
      * valueReference}
      */
     void setWeakValueReferenceForTesting(
@@ -2026,6 +1837,11 @@ class MapMakerInternalMap<
   /** Concrete implementation of {@link Segment} for strong keys and strong values. */
   static final class StrongKeyStrongValueSegment<K, V>
       extends Segment<K, V, StrongKeyStrongValueEntry<K, V>, StrongKeyStrongValueSegment<K, V>> {
+    /**
+     * @param map
+     * @param initialCapacity
+     * @param maxSegmentSize
+     */
     StrongKeyStrongValueSegment(
         MapMakerInternalMap<
                 K, V, StrongKeyStrongValueEntry<K, V>, StrongKeyStrongValueSegment<K, V>>
@@ -2052,6 +1868,11 @@ class MapMakerInternalMap<
       extends Segment<K, V, StrongKeyWeakValueEntry<K, V>, StrongKeyWeakValueSegment<K, V>> {
     private final ReferenceQueue<V> queueForValues = new ReferenceQueue<V>();
 
+    /**
+     * @param map
+     * @param initialCapacity
+     * @param maxSegmentSize
+     */
     StrongKeyWeakValueSegment(
         MapMakerInternalMap<K, V, StrongKeyWeakValueEntry<K, V>, StrongKeyWeakValueSegment<K, V>>
             map,
@@ -2113,34 +1934,16 @@ class MapMakerInternalMap<
     }
   }
 
-  /** Concrete implementation of {@link Segment} for strong keys and {@link Dummy} values. */
-  static final class StrongKeyDummyValueSegment<K>
-      extends Segment<K, Dummy, StrongKeyDummyValueEntry<K>, StrongKeyDummyValueSegment<K>> {
-    StrongKeyDummyValueSegment(
-        MapMakerInternalMap<K, Dummy, StrongKeyDummyValueEntry<K>, StrongKeyDummyValueSegment<K>>
-            map,
-        int initialCapacity,
-        int maxSegmentSize) {
-      super(map, initialCapacity, maxSegmentSize);
-    }
-
-    @Override
-    StrongKeyDummyValueSegment<K> self() {
-      return this;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public StrongKeyDummyValueEntry<K> castForTesting(InternalEntry<K, Dummy, ?> entry) {
-      return (StrongKeyDummyValueEntry<K>) entry;
-    }
-  }
-
   /** Concrete implementation of {@link Segment} for weak keys and strong values. */
   static final class WeakKeyStrongValueSegment<K, V>
       extends Segment<K, V, WeakKeyStrongValueEntry<K, V>, WeakKeyStrongValueSegment<K, V>> {
     private final ReferenceQueue<K> queueForKeys = new ReferenceQueue<K>();
 
+    /**
+     * @param map
+     * @param initialCapacity
+     * @param maxSegmentSize
+     */
     WeakKeyStrongValueSegment(
         MapMakerInternalMap<K, V, WeakKeyStrongValueEntry<K, V>, WeakKeyStrongValueSegment<K, V>>
             map,
@@ -2182,6 +1985,11 @@ class MapMakerInternalMap<
     private final ReferenceQueue<K> queueForKeys = new ReferenceQueue<K>();
     private final ReferenceQueue<V> queueForValues = new ReferenceQueue<V>();
 
+    /**
+     * @param map
+     * @param initialCapacity
+     * @param maxSegmentSize
+     */
     WeakKeyWeakValueSegment(
         MapMakerInternalMap<K, V, WeakKeyWeakValueEntry<K, V>, WeakKeyWeakValueSegment<K, V>> map,
         int initialCapacity,
@@ -2240,45 +2048,6 @@ class MapMakerInternalMap<
     void maybeDrainReferenceQueues() {
       drainKeyReferenceQueue(queueForKeys);
       drainValueReferenceQueue(queueForValues);
-    }
-
-    @Override
-    void maybeClearReferenceQueues() {
-      clearReferenceQueue(queueForKeys);
-    }
-  }
-
-  /** Concrete implementation of {@link Segment} for weak keys and {@link Dummy} values. */
-  static final class WeakKeyDummyValueSegment<K>
-      extends Segment<K, Dummy, WeakKeyDummyValueEntry<K>, WeakKeyDummyValueSegment<K>> {
-    private final ReferenceQueue<K> queueForKeys = new ReferenceQueue<K>();
-
-    WeakKeyDummyValueSegment(
-        MapMakerInternalMap<K, Dummy, WeakKeyDummyValueEntry<K>, WeakKeyDummyValueSegment<K>> map,
-        int initialCapacity,
-        int maxSegmentSize) {
-      super(map, initialCapacity, maxSegmentSize);
-    }
-
-    @Override
-    WeakKeyDummyValueSegment<K> self() {
-      return this;
-    }
-
-    @Override
-    ReferenceQueue<K> getKeyReferenceQueueForTesting() {
-      return queueForKeys;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public WeakKeyDummyValueEntry<K> castForTesting(InternalEntry<K, Dummy, ?> entry) {
-      return (WeakKeyDummyValueEntry<K>) entry;
-    }
-
-    @Override
-    void maybeDrainReferenceQueues() {
-      drainKeyReferenceQueue(queueForKeys);
     }
 
     @Override

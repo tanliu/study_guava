@@ -142,7 +142,6 @@ import java.util.logging.Logger;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 /**
@@ -283,7 +282,7 @@ public final class ArbitraryInstances {
       .build();
 
   /**
-   * type → implementation. Inherently mutable interfaces and abstract classes are mapped to their
+   * type -> implementation. Inherently mutable interfaces and abstract classes are mapped to their
    * default implementations and are "new"d upon get().
    */
   private static final ConcurrentMap<Class<?>, Class<?>> implementations = Maps.newConcurrentMap();
@@ -338,9 +337,6 @@ public final class ArbitraryInstances {
     Class<? extends T> implementation = getImplementation(type);
     if (implementation != null) {
       return get(implementation);
-    }
-    if (type == Stream.class) {
-      return type.cast(Stream.empty());
     }
     if (type.isEnum()) {
       T[] enumConstants = type.getEnumConstants();

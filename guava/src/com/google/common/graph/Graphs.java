@@ -21,7 +21,6 @@ import static com.google.common.graph.GraphConstants.NODE_NOT_IN_GRAPH;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.Objects;
-import com.google.common.base.Optional;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -35,7 +34,7 @@ import java.util.Set;
 import javax.annotation.Nullable;
 
 /**
- * Static utility methods for {@link Graph}, {@link ValueGraph}, and {@link Network} instances.
+ * Static utility methods for {@link Graph} and {@link Network} instances.
  *
  * @author James Sexton
  * @author Joshua O'Madadhain
@@ -55,7 +54,7 @@ public final class Graphs {
    *
    * <p>This method will detect any non-empty cycle, including self-loops (a cycle of length 1).
    */
-  public static <N> boolean hasCycle(Graph<N> graph) {
+  public static boolean hasCycle(Graph<?> graph) {
     int numEdges = graph.edges().size();
     if (numEdges == 0) {
       return false; // An edge-free graph is acyclic by definition.
@@ -66,7 +65,7 @@ public final class Graphs {
 
     Map<Object, NodeVisitState> visitedNodes =
         Maps.newHashMapWithExpectedSize(graph.nodes().size());
-    for (N node : graph.nodes()) {
+    for (Object node : graph.nodes()) {
       if (subgraphHasCycle(graph, visitedNodes, node, null)) {
         return true;
       }
@@ -97,8 +96,11 @@ public final class Graphs {
    * already visited (following only outgoing edges and without reusing edges), we know there's a
    * cycle in the graph.
    */
-  private static <N> boolean subgraphHasCycle(
-      Graph<N> graph, Map<Object, NodeVisitState> visitedNodes, N node, @Nullable N previousNode) {
+  private static boolean subgraphHasCycle(
+      Graph<?> graph,
+      Map<Object, NodeVisitState> visitedNodes,
+      Object node,
+      @Nullable Object previousNode) {
     NodeVisitState state = visitedNodes.get(node);
     if (state == NodeVisitState.COMPLETE) {
       return false;
@@ -108,7 +110,7 @@ public final class Graphs {
     }
 
     visitedNodes.put(node, NodeVisitState.PENDING);
-    for (N nextNode : graph.successors(node)) {
+    for (Object nextNode : graph.successors(node)) {
       if (canTraverseWithoutReusingEdge(graph, nextNode, previousNode)
           && subgraphHasCycle(graph, visitedNodes, nextNode, node)) {
         return true;
@@ -188,12 +190,13 @@ public final class Graphs {
    *
    * @throws IllegalArgumentException if {@code node} is not present in {@code graph}
    */
-  public static <N> Set<N> reachableNodes(Graph<N> graph, N node) {
+  @SuppressWarnings("unchecked") // Safe because we only cast if node is an element of the graph.
+  public static <N> Set<N> reachableNodes(Graph<N> graph, Object node) {
     checkArgument(graph.nodes().contains(node), NODE_NOT_IN_GRAPH, node);
     Set<N> visitedNodes = new LinkedHashSet<N>();
     Queue<N> queuedNodes = new ArrayDeque<N>();
-    visitedNodes.add(node);
-    queuedNodes.add(node);
+    visitedNodes.add((N) node);
+    queuedNodes.add((N) node);
     // Perform a breadth-first traversal rooted at the input node.
     while (!queuedNodes.isEmpty()) {
       N currentNode = queuedNodes.remove();
@@ -207,34 +210,125 @@ public final class Graphs {
   }
 
   /**
-   * @deprecated Use {@link Graph#equals(Object)} instead. This method will be removed in late 2017.
+   * Returns {@code true} if {@code graphA} and {@code graphB} have the same elements and the same
+   * relationships between elements, as exposed via the {@link Graph} interface.
+   *
+   * <p>Thus, two graphs A and B are equivalent if both are null or <b>all</b> of the following are
+   * true:
+   *
+   * <ul>
+   * <li>A and B have equal {@link Graph#isDirected() directedness}.
+   * <li>A and B have equal {@link Graph#nodes() node sets}.
+   * <li>A and B have equal {@link Graph#edges() edge sets}.
+   * </ul>
+   *
+   * <p>Graph properties besides {@link Graph#isDirected() directedness} do <b>not</b> affect
+   * equivalence. For example, two graphs may be considered equivalent even if one allows self-loops
+   * and the other doesn't. Additionally, the order in which nodes or edges are added to the graph,
+   * and the order in which they are iterated over, are irrelevant.
    */
-  // TODO(user): Delete this method.
-  @Deprecated
   public static boolean equivalent(@Nullable Graph<?> graphA, @Nullable Graph<?> graphB) {
-    return Objects.equal(graphA, graphB);
+    if (graphA == graphB) {
+      return true;
+    }
+    if (graphA == null || graphB == null) {
+      return false;
+    }
+
+    return graphA.isDirected() == graphB.isDirected()
+        && graphA.nodes().equals(graphB.nodes())
+        && graphA.edges().equals(graphB.edges());
   }
 
   /**
-   * @deprecated Use {@link ValueGraph#equals(Object)} instead. This method will be removed in late
-   * 2017.
+   * Returns {@code true} if {@code graphA} and {@code graphB} have the same elements (including
+   * edge values) and the same relationships between elements, as exposed via the {@link ValueGraph}
+   * interface.
+   *
+   * <p>Thus, two value graphs A and B are equivalent if both are null or <b>all</b> of the
+   * following are true:
+   *
+   * <ul>
+   * <li>A and B have equal {@link Graph#isDirected() directedness}.
+   * <li>A and B have equal {@link Graph#nodes() node sets}.
+   * <li>A and B have equal {@link Graph#edges() edge sets}.
+   * <li>Each edge in A has a {@link ValueGraph#edgeValue(Object, Object) value} equal to the {@link
+   *     ValueGraph#edgeValue(Object, Object) value} of the corresponding edge in B.
+   * </ul>
+   *
+   * <p>Graph properties besides {@link Graph#isDirected() directedness} do <b>not</b> affect
+   * equivalence. For example, two graphs may be considered equivalent even if one allows self-loops
+   * and the other doesn't. Additionally, the order in which nodes or edges are added to the graph,
+   * and the order in which they are iterated over, are irrelevant.
    */
-  // TODO(user): Delete this method.
-  @Deprecated
   public static boolean equivalent(
       @Nullable ValueGraph<?, ?> graphA, @Nullable ValueGraph<?, ?> graphB) {
-    return Objects.equal(graphA, graphB);
+    if (graphA == graphB) {
+      return true;
+    }
+    if (graphA == null || graphB == null) {
+      return false;
+    }
+
+    if (graphA.isDirected() != graphB.isDirected()
+        || !graphA.nodes().equals(graphB.nodes())
+        || !graphA.edges().equals(graphB.edges())) {
+      return false;
+    }
+
+    for (EndpointPair<?> edge : graphA.edges()) {
+      if (!graphA
+          .edgeValue(edge.nodeU(), edge.nodeV())
+          .equals(graphB.edgeValue(edge.nodeU(), edge.nodeV()))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /**
-   * @deprecated Use {@link Network#equals(Object)} instead. This method will be removed in late
-   * 2017.
+   * Returns {@code true} if {@code networkA} and {@code networkB} have the same elements and the
+   * same relationships between elements, as exposed via the {@link Network} interface.
+   *
+   * <p>Thus, two networks A and B are equivalent if both are null or <b>all</b> of the following
+   * are true:
+   *
+   * <ul>
+   * <li>A and B have equal {@link Network#isDirected() directedness}.
+   * <li>A and B have equal {@link Network#nodes() node sets}.
+   * <li>A and B have equal {@link Network#edges() edge sets}.
+   * <li>Each edge in A connects the same nodes in the same direction (if any) as the corresponding
+   *     edge in B.
+   * </ul>
+   *
+   * <p>Network properties besides {@link Network#isDirected() directedness} do <b>not</b> affect
+   * equivalence. For example, two networks may be considered equal even if one allows parallel
+   * edges and the other doesn't. Additionally, the order in which nodes or edges are added to the
+   * network, and the order in which they are iterated over, are irrelevant.
    */
-  // TODO(user): Delete this method.
-  @Deprecated
   public static boolean equivalent(
       @Nullable Network<?, ?> networkA, @Nullable Network<?, ?> networkB) {
-    return Objects.equal(networkA, networkB);
+    if (networkA == networkB) {
+      return true;
+    }
+    if (networkA == null || networkB == null) {
+      return false;
+    }
+
+    if (networkA.isDirected() != networkB.isDirected()
+        || !networkA.nodes().equals(networkB.nodes())
+        || !networkA.edges().equals(networkB.edges())) {
+      return false;
+    }
+
+    for (Object edge : networkA.edges()) {
+      if (!networkA.incidentNodes(edge).equals(networkB.incidentNodes(edge))) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   // Graph mutation methods
@@ -294,17 +388,17 @@ public final class Graphs {
     }
 
     @Override
-    public Set<N> adjacentNodes(N node) {
+    public Set<N> adjacentNodes(Object node) {
       return graph.adjacentNodes(node);
     }
 
     @Override
-    public Set<N> predecessors(N node) {
+    public Set<N> predecessors(Object node) {
       return graph.successors(node); // transpose
     }
 
     @Override
-    public Set<N> successors(N node) {
+    public Set<N> successors(Object node) {
       return graph.predecessors(node); // transpose
     }
   }
@@ -362,27 +456,27 @@ public final class Graphs {
     }
 
     @Override
-    public Set<N> adjacentNodes(N node) {
+    public Set<N> adjacentNodes(Object node) {
       return graph.adjacentNodes(node);
     }
 
     @Override
-    public Set<N> predecessors(N node) {
+    public Set<N> predecessors(Object node) {
       return graph.successors(node); // transpose
     }
 
     @Override
-    public Set<N> successors(N node) {
+    public Set<N> successors(Object node) {
       return graph.predecessors(node); // transpose
     }
 
     @Override
-    public V edgeValue(N nodeU, N nodeV) {
+    public V edgeValue(Object nodeU, Object nodeV) {
       return graph.edgeValue(nodeV, nodeU); // transpose
     }
 
     @Override
-    public V edgeValueOrDefault(N nodeU, N nodeV, @Nullable V defaultValue) {
+    public V edgeValueOrDefault(Object nodeU, Object nodeV, @Nullable V defaultValue) {
       return graph.edgeValueOrDefault(nodeV, nodeU, defaultValue); // transpose
     }
   }
@@ -446,54 +540,49 @@ public final class Graphs {
     }
 
     @Override
-    public Set<N> adjacentNodes(N node) {
+    public Set<N> adjacentNodes(Object node) {
       return network.adjacentNodes(node);
     }
 
     @Override
-    public Set<N> predecessors(N node) {
+    public Set<N> predecessors(Object node) {
       return network.successors(node); // transpose
     }
 
     @Override
-    public Set<N> successors(N node) {
+    public Set<N> successors(Object node) {
       return network.predecessors(node); // transpose
     }
 
     @Override
-    public Set<E> incidentEdges(N node) {
+    public Set<E> incidentEdges(Object node) {
       return network.incidentEdges(node);
     }
 
     @Override
-    public Set<E> inEdges(N node) {
+    public Set<E> inEdges(Object node) {
       return network.outEdges(node); // transpose
     }
 
     @Override
-    public Set<E> outEdges(N node) {
+    public Set<E> outEdges(Object node) {
       return network.inEdges(node); // transpose
     }
 
     @Override
-    public EndpointPair<N> incidentNodes(E edge) {
+    public EndpointPair<N> incidentNodes(Object edge) {
       EndpointPair<N> endpointPair = network.incidentNodes(edge);
       return EndpointPair.of(network, endpointPair.nodeV(), endpointPair.nodeU()); // transpose
     }
 
     @Override
-    public Set<E> adjacentEdges(E edge) {
+    public Set<E> adjacentEdges(Object edge) {
       return network.adjacentEdges(edge);
     }
 
     @Override
-    public Set<E> edgesConnecting(N nodeU, N nodeV) {
+    public Set<E> edgesConnecting(Object nodeU, Object nodeV) {
       return network.edgesConnecting(nodeV, nodeU); // transpose
-    }
-
-    @Override
-    public Optional<E> edgeConnecting(N nodeU, N nodeV) {
-      return network.edgeConnecting(nodeV, nodeU); // transpose
     }
   }
 

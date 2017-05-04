@@ -77,7 +77,6 @@ public class MultisetTestSuiteBuilder<E>
     testers.add(MultisetCountTester.class);
     testers.add(MultisetElementSetTester.class);
     testers.add(MultisetEqualsTester.class);
-    testers.add(MultisetForEachEntryTester.class);
     testers.add(MultisetReadsTester.class);
     testers.add(MultisetSetCountConditionallyTester.class);
     testers.add(MultisetSetCountUnconditionallyTester.class);

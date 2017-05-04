@@ -79,8 +79,7 @@ import javax.annotation.Nullable;
  * <li>Convert in the "backward" direction using {@code converter.reverse().convert(b)} or {@code
  *     converter.reverse().convertAll(bs)}.
  * <li>Use {@code converter} or {@code converter.reverse()} anywhere a {@link
- *     java.util.function.Function} is accepted (for example {@link java.util.stream.Stream#map
- *     Stream.map}).
+ *     java.util.function.Function} is accepted (for example {@link Stream#map}).
  * <li><b>Do not</b> call {@link #doForward} or {@link #doBackward} directly; these exist only to be
  *     overridden.
  * </ul>
@@ -230,9 +229,8 @@ public abstract class Converter<A, B> implements Function<A, B> {
    * value roughly equivalent to {@code a}.
    *
    * <p>The returned converter is serializable if {@code this} converter is.
-   *
-   * <p><b>Note:</b> you should not override this method. It is non-final for legacy reasons.
    */
+  // TODO(kak): Make this method final
   @CanIgnoreReturnValue
   public Converter<B, A> reverse() {
     Converter<B, A> result = reverse;

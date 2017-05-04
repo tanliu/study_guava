@@ -40,7 +40,6 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -360,7 +359,8 @@ public class CacheBuilderTest extends TestCase {
   }
 
   public void testValuesIsNotASet() {
-    assertFalse(new CacheBuilder<Object, Object>().build().asMap().values() instanceof Set);
+    assertThat(new CacheBuilder<Object, Object>().build().asMap().values())
+        .isNotInstanceOf(Set.class);
   }
 
   @GwtIncompatible // CacheTesting
@@ -477,17 +477,13 @@ public class CacheBuilderTest extends TestCase {
     final CountDownLatch tasksFinished = new CountDownLatch(nTasks);
     for (int i = 0; i < nTasks; i++) {
       final String s = "a" + i;
-      @SuppressWarnings("unused") // go/futurereturn-lsc
-      Future<?> possiblyIgnoredError =
-          threadPool.submit(
-              new Runnable() {
-                @Override
-                public void run() {
-                  cache.getUnchecked(s);
-                  computedCount.incrementAndGet();
-                  tasksFinished.countDown();
-                }
-              });
+      threadPool.submit(new Runnable() {
+        @Override public void run() {
+          cache.getUnchecked(s);
+          computedCount.incrementAndGet();
+          tasksFinished.countDown();
+        }
+      });
       expectedKeys.add(s);
     }
 
@@ -568,20 +564,16 @@ public class CacheBuilderTest extends TestCase {
 
     ExecutorService threadPool = Executors.newFixedThreadPool(nThreads);
     for (int i = 0; i < nTasks; i++) {
-      @SuppressWarnings("unused") // go/futurereturn-lsc
-      Future<?> possiblyIgnoredError =
-          threadPool.submit(
-              new Runnable() {
-                @Override
-                public void run() {
-                  for (int j = 0; j < getsPerTask; j++) {
-                    try {
-                      cache.getUnchecked("key" + random.nextInt(nUniqueKeys));
-                    } catch (RuntimeException e) {
-                    }
-                  }
-                }
-              });
+      threadPool.submit(new Runnable() {
+        @Override public void run() {
+          for (int j = 0; j < getsPerTask; j++) {
+            try {
+              cache.getUnchecked("key" + random.nextInt(nUniqueKeys));
+            } catch (RuntimeException e) {
+            }
+          }
+        }
+      });
     }
 
     threadPool.shutdown();

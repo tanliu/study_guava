@@ -87,7 +87,7 @@ import java.util.Queue;
  *     improved (and asymptotically superior) performance.
  * <li>The retrieval operations {@link #peek}, {@link #peekFirst}, {@link
  *     #peekLast}, {@link #element}, and {@link #size} are constant-time.
- * <li>The enqueuing and dequeuing operations ({@link #offer}, {@link #add}, and
+ * <li>The enqueing and dequeing operations ({@link #offer}, {@link #add}, and
  *     all the forms of {@link #poll} and {@link #remove()}) run in {@code
  *     O(log n) time}.
  * <li>The {@link #remove(Object)} and {@link #contains} operations require
@@ -418,14 +418,7 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
       return null;
     }
     E actualLastElement = elementData(size);
-    int lastElementAt = heapForIndex(size).swapWithConceptuallyLastElement(actualLastElement);
-    if (lastElementAt == index) {
-      // 'actualLastElement' is now at 'lastElementAt', and the element that was at 'lastElementAt'
-      // is now at the end of queue. If that's the element we wanted to remove in the first place,
-      // don't try to (incorrectly) trickle it. Instead, just delete it and we're done.
-      queue[size] = null;
-      return null;
-    }
+    int lastElementAt = heapForIndex(size).getCorrectLastElement(actualLastElement);
     E toTrickle = elementData(size);
     queue[size] = null;
     MoveDesc<E> changes = fillHole(index, toTrickle);
@@ -676,8 +669,7 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
     }
 
     /**
-     * Swap {@code actualLastElement} with the conceptually correct last element of the heap.
-     * Returns the index that {@code actualLastElement} now resides in.
+     * Returns the conceptually correct last element of the heap.
      *
      * <p>Since the last element of the array is actually in the
      * middle of the sorted structure, a childless uncle node could be
@@ -685,7 +677,7 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
      * becomes the new parent of the uncle. In that case, we first
      * switch the last element with its uncle, before returning.
      */
-    int swapWithConceptuallyLastElement(E actualLastElement) {
+    int getCorrectLastElement(E actualLastElement) {
       int parentIndex = getParentIndex(size);
       if (parentIndex != 0) {
         int grandparentIndex = getParentIndex(parentIndex);
@@ -780,10 +772,7 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
    */
   private class QueueIterator implements Iterator<E> {
     private int cursor = -1;
-    private int nextCursor = -1;
     private int expectedModCount = modCount;
-    // The same element is not allowed in both forgetMeNot and skipMe, but duplicates are allowed in
-    // either of them, up to the same multiplicity as the queue.
     private Queue<E> forgetMeNot;
     private List<E> skipMe;
     private E lastFromForgetMeNot;
@@ -792,17 +781,16 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
     @Override
     public boolean hasNext() {
       checkModCount();
-      nextNotInSkipMe(cursor + 1);
-      return (nextCursor < size())
+      return (nextNotInSkipMe(cursor + 1) < size())
           || ((forgetMeNot != null) && !forgetMeNot.isEmpty());
     }
 
     @Override
     public E next() {
       checkModCount();
-      nextNotInSkipMe(cursor + 1);
-      if (nextCursor < size()) {
-        cursor = nextCursor;
+      int tempCursor = nextNotInSkipMe(cursor + 1);
+      if (tempCursor < size()) {
+        cursor = tempCursor;
         canRemove = true;
         return elementData(cursor);
       } else if (forgetMeNot != null) {
@@ -829,35 +817,28 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
             forgetMeNot = new ArrayDeque<E>();
             skipMe = new ArrayList<E>(3);
           }
-          if (!foundAndRemovedExactReference(skipMe, moved.toTrickle)) {
-            forgetMeNot.add(moved.toTrickle);
-          }
-          if (!foundAndRemovedExactReference(forgetMeNot, moved.replaced)) {
-            skipMe.add(moved.replaced);
-          }
+          forgetMeNot.add(moved.toTrickle);
+          skipMe.add(moved.replaced);
         }
         cursor--;
-        nextCursor--;
       } else { // we must have set lastFromForgetMeNot in next()
         checkState(removeExact(lastFromForgetMeNot));
         lastFromForgetMeNot = null;
       }
     }
 
-    /** Returns true if an exact reference (==) was found and removed from the supplied iterable. */
-    private boolean foundAndRemovedExactReference(Iterable<E> elements, E target) {
-      for (Iterator<E> it = elements.iterator(); it.hasNext();) {
-        E element = it.next();
+    // Finds only this exact instance, not others that are equals()
+    private boolean containsExact(Iterable<E> elements, E target) {
+      for (E element : elements) {
         if (element == target) {
-          it.remove();
           return true;
         }
       }
       return false;
     }
 
-    /** Removes only this exact instance, not others that are equals() */
-    private boolean removeExact(Object target) {
+    // Removes only this exact instance, not others that are equals()
+    boolean removeExact(Object target) {
       for (int i = 0; i < size; i++) {
         if (queue[i] == target) {
           removeAt(i);
@@ -867,25 +848,23 @@ public final class MinMaxPriorityQueue<E> extends AbstractQueue<E> {
       return false;
     }
 
-    private void checkModCount() {
+    void checkModCount() {
       if (modCount != expectedModCount) {
         throw new ConcurrentModificationException();
       }
     }
 
     /**
-     * Advances nextCursor to the index of the first element after {@code c} that is not in
+     * Returns the index of the first element after {@code c} that is not in
      * {@code skipMe} and returns {@code size()} if there is no such element.
      */
-    private void nextNotInSkipMe(int c) {
-      if (nextCursor < c) {
-        if (skipMe != null) {
-          while (c < size() && foundAndRemovedExactReference(skipMe, elementData(c))) {
-            c++;
-          }
+    private int nextNotInSkipMe(int c) {
+      if (skipMe != null) {
+        while (c < size() && containsExact(skipMe, elementData(c))) {
+          c++;
         }
-        nextCursor = c;
       }
+      return c;
     }
   }
 

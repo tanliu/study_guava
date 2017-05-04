@@ -22,7 +22,6 @@ import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.lang.reflect.Array;
-import java.util.Arrays;
 import java.util.Collection;
 import javax.annotation.Nullable;
 
@@ -34,6 +33,7 @@ import javax.annotation.Nullable;
  */
 @GwtCompatible(emulated = true)
 public final class ObjectArrays {
+  static final Object[] EMPTY_ARRAY = new Object[0];
 
   private ObjectArrays() {}
 
@@ -101,9 +101,16 @@ public final class ObjectArrays {
    *     last position.
    */
   public static <T> T[] concat(T[] array, @Nullable T element) {
-    T[] result = Arrays.copyOf(array, array.length + 1);
+    T[] result = arraysCopyOf(array, array.length + 1);
     result[array.length] = element;
     return result;
+  }
+
+  /** GWT safe version of Arrays.copyOf. */
+  static <T> T[] arraysCopyOf(T[] original, int newLength) {
+    T[] copy = newArray(original, newLength);
+    System.arraycopy(original, 0, copy, 0, Math.min(original.length, newLength));
+    return copy;
   }
 
   /**
@@ -189,7 +196,7 @@ public final class ObjectArrays {
   static Object[] copyAsObjectArray(Object[] elements, int offset, int length) {
     checkPositionIndexes(offset, offset + length, elements.length);
     if (length == 0) {
-      return new Object[0];
+      return EMPTY_ARRAY;
     }
     Object[] result = new Object[length];
     System.arraycopy(elements, offset, result, 0, length);

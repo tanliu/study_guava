@@ -16,9 +16,6 @@
 
 package com.google.common.util.concurrent;
 
-import static com.google.common.util.concurrent.Futures.transform;
-import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
-
 import com.google.common.base.Function;
 import java.lang.reflect.UndeclaredThrowableException;
 
@@ -33,7 +30,8 @@ public class FuturesTransformTest
 
   @Override protected ListenableFuture<String> buildChainingFuture(
       ListenableFuture<Integer> inputFuture) {
-    return transform(inputFuture, new ComposeFunction(), directExecutor());
+    return Futures.transform(inputFuture,
+        new ComposeFunction());
   }
 
   @Override protected String getSuccessfulResult() {

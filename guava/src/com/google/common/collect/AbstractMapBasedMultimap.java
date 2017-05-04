@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.CollectPreconditions.checkRemove;
 
 import com.google.common.annotations.GwtCompatible;
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.collect.Maps.ViewCachingAbstractMap;
 import com.google.j2objc.annotations.WeakOuter;
 import java.io.Serializable;
@@ -40,8 +41,6 @@ import java.util.RandomAccess;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.Spliterator;
-import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
 
 /**
@@ -87,7 +86,7 @@ import javax.annotation.Nullable;
  * @author Jared Levy
  * @author Louis Wasserman
  */
-@GwtCompatible
+@GwtCompatible(emulated = true)
 abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     implements Serializable {
   /*
@@ -268,15 +267,15 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     return unmodifiableCollectionSubclass(output);
   }
 
-  static <E> Collection<E> unmodifiableCollectionSubclass(Collection<E> collection) {
-    if (collection instanceof NavigableSet) {
-      return Sets.unmodifiableNavigableSet((NavigableSet<E>) collection);
-    } else if (collection instanceof SortedSet) {
-      return Collections.unmodifiableSortedSet((SortedSet<E>) collection);
+  Collection<V> unmodifiableCollectionSubclass(Collection<V> collection) {
+    // We don't deal with NavigableSet here yet for GWT reasons -- instead,
+    // non-GWT TreeMultimap explicitly overrides this and uses NavigableSet.
+    if (collection instanceof SortedSet) {
+      return Collections.unmodifiableSortedSet((SortedSet<V>) collection);
     } else if (collection instanceof Set) {
-      return Collections.unmodifiableSet((Set<E>) collection);
+      return Collections.unmodifiableSet((Set<V>) collection);
     } else if (collection instanceof List) {
-      return Collections.unmodifiableList((List<E>) collection);
+      return Collections.unmodifiableList((List<V>) collection);
     } else {
       return Collections.unmodifiableCollection(collection);
     }
@@ -314,9 +313,9 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
    * returned collection, and vice versa.
    */
   Collection<V> wrapCollection(@Nullable K key, Collection<V> collection) {
-    if (collection instanceof NavigableSet) {
-      return new WrappedNavigableSet(key, (NavigableSet<V>) collection, null);
-    } else if (collection instanceof SortedSet) {
+    // We don't deal with NavigableSet here yet for GWT reasons -- instead,
+    // non-GWT TreeMultimap explicitly overrides this and uses NavigableSet.
+    if (collection instanceof SortedSet) {
       return new WrappedSortedSet(key, (SortedSet<V>) collection, null);
     } else if (collection instanceof Set) {
       return new WrappedSet(key, (Set<V>) collection);
@@ -452,12 +451,6 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     public Iterator<V> iterator() {
       refreshIfEmpty();
       return new WrappedIterator();
-    }
-    
-    @Override
-    public Spliterator<V> spliterator() {
-      refreshIfEmpty();
-      return delegate.spliterator();
     }
 
     /** Collection iterator for {@code WrappedCollection}. */
@@ -609,9 +602,9 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     }
   }
 
-  private static <E> Iterator<E> iteratorOrListIterator(Collection<E> collection) {
+  private Iterator<V> iteratorOrListIterator(Collection<V> collection) {
     return (collection instanceof List)
-        ? ((List<E>) collection).listIterator()
+        ? ((List<V>) collection).listIterator()
         : collection.iterator();
   }
 
@@ -700,6 +693,7 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     }
   }
 
+  @GwtIncompatible // NavigableSet
   @WeakOuter
   class WrappedNavigableSet extends WrappedSortedSet implements NavigableSet<V> {
     WrappedNavigableSet(
@@ -929,13 +923,11 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
 
   @Override
   Set<K> createKeySet() {
-    if (map instanceof NavigableMap) {
-      return new NavigableKeySet((NavigableMap<K, Collection<V>>) map);
-    } else if (map instanceof SortedMap) {
-      return new SortedKeySet((SortedMap<K, Collection<V>>) map);
-    } else {
-      return new KeySet(map);
-    }
+    // TreeMultimap uses NavigableKeySet explicitly, but we don't handle that here for GWT
+    // compatibility reasons
+    return (map instanceof SortedMap)
+        ? new SortedKeySet((SortedMap<K, Collection<V>>) map)
+        : new KeySet(map);
   }
 
   @WeakOuter
@@ -973,11 +965,6 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     }
 
     // The following methods are included for better performance.
-
-    @Override
-    public Spliterator<K> spliterator() {
-      return map().keySet().spliterator();
-    }
 
     @Override
     public boolean remove(Object key) {
@@ -1054,6 +1041,7 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     }
   }
 
+  @GwtIncompatible // NavigableSet
   @WeakOuter
   class NavigableKeySet extends SortedKeySet implements NavigableSet<K> {
     NavigableKeySet(NavigableMap<K, Collection<V>> subMap) {
@@ -1213,12 +1201,6 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     };
   }
 
-  @Override
-  Spliterator<V> valueSpliterator() {
-    return CollectSpliterators.flatMap(
-        map.values().spliterator(), Collection::spliterator, Spliterator.SIZED, size());
-  }
-
   /*
    * TODO(kevinb): should we copy this javadoc to each concrete class, so that
    * classes like LinkedHashMultimap that need to say something different are
@@ -1259,35 +1241,12 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
   }
 
   @Override
-  Spliterator<Entry<K, V>> entrySpliterator() {
-    return CollectSpliterators.flatMap(
-        map.entrySet().spliterator(),
-        keyToValueCollectionEntry -> {
-          K key = keyToValueCollectionEntry.getKey();
-          Collection<V> valueCollection = keyToValueCollectionEntry.getValue();
-          return CollectSpliterators.map(
-              valueCollection.spliterator(), (V value) -> Maps.immutableEntry(key, value));
-        },
-        Spliterator.SIZED,
-        size());
-  }
-
-  @Override
-  public void forEach(BiConsumer<? super K, ? super V> action) {
-    checkNotNull(action);
-    map.forEach(
-        (key, valueCollection) -> valueCollection.forEach(value -> action.accept(key, value)));
-  }
-
-  @Override
   Map<K, Collection<V>> createAsMap() {
-    if (map instanceof NavigableMap) {
-      return new NavigableAsMap((NavigableMap<K, Collection<V>>) map);
-    } else if (map instanceof SortedMap) {
-      return new SortedAsMap((SortedMap<K, Collection<V>>) map);
-    } else {
-      return new AsMap(map);
-    }
+    // TreeMultimap uses NavigableAsMap explicitly, but we don't handle that here for GWT
+    // compatibility reasons
+    return (map instanceof SortedMap)
+        ? new SortedAsMap((SortedMap<K, Collection<V>>) map)
+        : new AsMap(map);
   }
 
   @WeakOuter
@@ -1390,11 +1349,6 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
         return new AsMapIterator();
       }
 
-      @Override
-      public Spliterator<Entry<K, Collection<V>>> spliterator() {
-        return CollectSpliterators.map(submap.entrySet().spliterator(), AsMap.this::wrapEntry);
-      }
-
       // The following methods are included for performance.
 
       @Override
@@ -1495,6 +1449,7 @@ abstract class AbstractMapBasedMultimap<K, V> extends AbstractMultimap<K, V>
     }
   }
 
+  @GwtIncompatible // NavigableAsMap
   class NavigableAsMap extends SortedAsMap implements NavigableMap<K, Collection<V>> {
 
     NavigableAsMap(NavigableMap<K, Collection<V>> submap) {

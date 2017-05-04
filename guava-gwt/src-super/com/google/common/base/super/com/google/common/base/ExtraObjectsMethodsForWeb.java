@@ -16,11 +16,14 @@ package com.google.common.base;
 
 import javax.annotation.Nullable;
 
+import jsinterop.annotations.JsMethod;
+
 /**
  * Holder for extra methods of {@code Objects} only in web.
  */
 abstract class ExtraObjectsMethodsForWeb {
-  public static boolean equal(@Nullable String a, @Nullable String b) {
+  @JsMethod
+  public static native boolean equal(@Nullable String a, @Nullable String b) /*-{
     return a == b;
-  }
+  }-*/;
 }

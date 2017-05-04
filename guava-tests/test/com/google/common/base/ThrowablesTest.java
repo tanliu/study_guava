@@ -396,7 +396,7 @@ public class ThrowablesTest extends TestCase {
       sample.noneDeclared();
       fail();
     } catch (RuntimeException expected) {
-      assertThat(expected.getCause()).isInstanceOf(SomeCheckedException.class);
+      assertTrue(expected.getCause() instanceof SomeCheckedException);
     }
   }
 
@@ -618,23 +618,6 @@ public class ThrowablesTest extends TestCase {
       Throwables.getCausalChain(null);
       fail("Should have throw NPE");
     } catch (NullPointerException expected) {
-    }
-  }
-
-  @GwtIncompatible // Throwables.getCauseAs(Throwable, Class)
-  public void testGetCauseAs() {
-    SomeCheckedException cause = new SomeCheckedException();
-    SomeChainingException thrown = new SomeChainingException(cause);
-
-    assertThat(thrown.getCause()).isSameAs(cause);
-    assertThat(Throwables.getCauseAs(thrown, SomeCheckedException.class)).isSameAs(cause);
-    assertThat(Throwables.getCauseAs(thrown, Exception.class)).isSameAs(cause);
-
-    try {
-      Throwables.getCauseAs(thrown, IllegalStateException.class);
-      fail("Should have thrown CCE");
-    } catch (ClassCastException expected) {
-      assertThat(expected.getCause()).isSameAs(thrown);
     }
   }
 

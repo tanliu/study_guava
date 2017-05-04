@@ -81,7 +81,7 @@ public final class GraphEquivalenceTest {
     MutableGraph<Integer> g2 = createGraph(edgeType);
     g2.addNode(N2);
 
-    assertThat(graph).isNotEqualTo(g2);
+    assertThat(Graphs.equivalent(graph, g2)).isFalse();
   }
 
   // Node/edge sets are the same, but node/edge connections differ due to edge type.
@@ -92,7 +92,7 @@ public final class GraphEquivalenceTest {
     MutableGraph<Integer> g2 = createGraph(oppositeType(edgeType));
     g2.putEdge(N1, N2);
 
-    assertThat(graph).isNotEqualTo(g2);
+    assertThat(Graphs.equivalent(graph, g2)).isFalse();
   }
 
   // Node/edge sets and node/edge connections are the same, but directedness differs.
@@ -103,7 +103,7 @@ public final class GraphEquivalenceTest {
     MutableGraph<Integer> g2 = createGraph(oppositeType(edgeType));
     g2.putEdge(N1, N1);
 
-    assertThat(graph).isNotEqualTo(g2);
+    assertThat(Graphs.equivalent(graph, g2)).isFalse();
   }
 
   // Node/edge sets and node/edge connections are the same, but graph properties differ.
@@ -116,7 +116,7 @@ public final class GraphEquivalenceTest {
         GraphBuilder.from(graph).allowsSelfLoops(!graph.allowsSelfLoops()).build();
     g2.putEdge(N1, N2);
 
-    assertThat(graph).isEqualTo(g2);
+    assertThat(Graphs.equivalent(graph, g2)).isTrue();
   }
 
   // Node/edge sets and node/edge connections are the same, but edge order differs.
@@ -135,7 +135,7 @@ public final class GraphEquivalenceTest {
     g2.putEdge(N3, N1);
     g2.putEdge(N1, N2);
 
-    assertThat(g1).isEqualTo(g2);
+    assertThat(Graphs.equivalent(g1, g2)).isTrue();
   }
 
   @Test
@@ -147,10 +147,10 @@ public final class GraphEquivalenceTest {
 
     switch (edgeType) {
       case UNDIRECTED:
-        assertThat(graph).isEqualTo(g2);
+        assertThat(Graphs.equivalent(graph, g2)).isTrue();
         break;
       case DIRECTED:
-        assertThat(graph).isNotEqualTo(g2);
+        assertThat(Graphs.equivalent(graph, g2)).isFalse();
         break;
       default:
         throw new IllegalStateException("Unexpected edge type: " + edgeType);

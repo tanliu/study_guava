@@ -24,7 +24,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import junit.framework.TestCase;
 
@@ -78,8 +77,7 @@ public class CacheLoaderTest extends TestCase {
     assertEquals(0, loadAllCount.get());
 
     baseLoader.load(new Object());
-    @SuppressWarnings("unused") // go/futurereturn-lsc
-    Future<?> possiblyIgnoredError = baseLoader.reload(new Object(), new Object());
+    baseLoader.reload(new Object(), new Object());
     baseLoader.loadAll(ImmutableList.of(new Object()));
     assertEquals(1, loadCount.get());
     assertEquals(1, reloadCount.get());
@@ -90,8 +88,7 @@ public class CacheLoaderTest extends TestCase {
         CacheLoader.asyncReloading(baseLoader, executor);
 
     asyncReloader.load(new Object());
-    @SuppressWarnings("unused") // go/futurereturn-lsc
-    Future<?> possiblyIgnoredError1 = asyncReloader.reload(new Object(), new Object());
+    asyncReloader.reload(new Object(), new Object());
     asyncReloader.loadAll(ImmutableList.of(new Object()));
     assertEquals(2, loadCount.get());
     assertEquals(1, reloadCount.get());

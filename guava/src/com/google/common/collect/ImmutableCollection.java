@@ -25,14 +25,10 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.Serializable;
 import java.util.AbstractCollection;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.function.Predicate;
 import javax.annotation.Nullable;
 
 /**
@@ -156,13 +152,6 @@ import javax.annotation.Nullable;
 // TODO(kevinb): I think we should push everything down to "BaseImmutableCollection" or something,
 // just to do everything we can to emphasize the "practically an interface" nature of this class.
 public abstract class ImmutableCollection<E> extends AbstractCollection<E> implements Serializable {
-  /*
-   * We expect SIZED (and SUBSIZED, if applicable) to be added by the spliterator factory methods.
-   * These are properties of the collection as a whole; SIZED and SUBSIZED are more properties of
-   * the spliterator implementation.
-   */
-  static final int SPLITERATOR_CHARACTERISTICS =
-      Spliterator.IMMUTABLE | Spliterator.NONNULL | Spliterator.ORDERED;
 
   ImmutableCollection() {}
 
@@ -173,17 +162,10 @@ public abstract class ImmutableCollection<E> extends AbstractCollection<E> imple
   public abstract UnmodifiableIterator<E> iterator();
 
   @Override
-  public Spliterator<E> spliterator() {
-    return Spliterators.spliterator(this, SPLITERATOR_CHARACTERISTICS);
-  }
-  
-  private static final Object[] EMPTY_ARRAY = {};
-
-  @Override
   public final Object[] toArray() {
     int size = size();
     if (size == 0) {
-      return EMPTY_ARRAY;
+      return ObjectArrays.EMPTY_ARRAY;
     }
     Object[] result = new Object[size];
     copyIntoArray(result, 0);
@@ -266,18 +248,6 @@ public abstract class ImmutableCollection<E> extends AbstractCollection<E> imple
    * @deprecated Unsupported operation.
    */
   @CanIgnoreReturnValue
-  @Deprecated
-  @Override
-  public final boolean removeIf(Predicate<? super E> filter) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the collection unmodified.
-   *
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation.
-   */
   @Deprecated
   @Override
   public final boolean retainAll(Collection<?> elementsToKeep) {
@@ -468,7 +438,7 @@ public abstract class ImmutableCollection<E> extends AbstractCollection<E> imple
     private void ensureCapacity(int minCapacity) {
       if (contents.length < minCapacity) {
         this.contents =
-            Arrays.copyOf(
+            ObjectArrays.arraysCopyOf(
                 this.contents, expandedCapacity(contents.length, minCapacity));
       }
     }
@@ -500,15 +470,6 @@ public abstract class ImmutableCollection<E> extends AbstractCollection<E> imple
         ensureCapacity(size + collection.size());
       }
       super.addAll(elements);
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    ArrayBasedBuilder<E> combine(ArrayBasedBuilder<E> builder) {
-      checkNotNull(builder);
-      ensureCapacity(size + builder.size);
-      System.arraycopy(builder.contents, 0, this.contents, size, builder.size);
-      size += builder.size;
       return this;
     }
   }

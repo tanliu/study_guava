@@ -20,7 +20,6 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.testing.SerializableTester;
-import java.util.Arrays;
 import java.util.List;
 import java.util.NavigableMap;
 
@@ -146,7 +145,6 @@ public class TreeRangeSetTest extends AbstractRangeSetTest {
   }
 
   public void testEnclosing(RangeSet<Integer> rangeSet) {
-    assertTrue(rangeSet.enclosesAll(ImmutableList.<Range<Integer>>of()));
     for (Range<Integer> query : QUERY_RANGES) {
       boolean expectEnclose = false;
       for (Range<Integer> expectedRange : rangeSet.asRanges()) {
@@ -158,10 +156,6 @@ public class TreeRangeSetTest extends AbstractRangeSetTest {
 
       assertEquals(rangeSet + " was incorrect on encloses(" + query + ")", expectEnclose,
           rangeSet.encloses(query));
-      assertEquals(
-          rangeSet + " was incorrect on enclosesAll([" + query + "])",
-          expectEnclose,
-          rangeSet.enclosesAll(ImmutableList.of(query)));
     }
   }
 
@@ -638,24 +632,6 @@ public class TreeRangeSetTest extends AbstractRangeSetTest {
     assertTrue(rangeSet.contains(8));
     assertNull(rangeSet.rangeContaining(6));
     assertFalse(rangeSet.contains(6));
-  }
-
-  public void testAddAll() {
-    RangeSet<Integer> rangeSet = TreeRangeSet.create();
-    rangeSet.add(Range.closed(3, 10));
-    rangeSet.addAll(Arrays.asList(Range.open(1, 3), Range.closed(5, 8), Range.closed(9, 11)));
-    assertThat(rangeSet.asRanges())
-        .containsExactly(Range.openClosed(1, 11))
-        .inOrder();
-  }
-
-  public void testRemoveAll() {
-    RangeSet<Integer> rangeSet = TreeRangeSet.create();
-    rangeSet.add(Range.closed(3, 10));
-    rangeSet.removeAll(Arrays.asList(Range.open(1, 3), Range.closed(5, 8), Range.closed(9, 11)));
-    assertThat(rangeSet.asRanges())
-        .containsExactly(Range.closedOpen(3, 5), Range.open(8, 9))
-        .inOrder();
   }
 
   @GwtIncompatible // SerializableTester

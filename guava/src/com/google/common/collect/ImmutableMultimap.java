@@ -25,6 +25,7 @@ import com.google.common.annotations.GwtIncompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.j2objc.annotations.Weak;
 import com.google.j2objc.annotations.WeakOuter;
+
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,8 +35,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Spliterator;
-import java.util.function.BiConsumer;
+import java.util.Set;
+
 import javax.annotation.Nullable;
 
 /**
@@ -262,12 +263,6 @@ public abstract class ImmutableMultimap<K, V> extends AbstractMultimap<K, V>
     @CanIgnoreReturnValue
     public Builder<K, V> orderValuesBy(Comparator<? super V> valueComparator) {
       this.valueComparator = checkNotNull(valueComparator);
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    Builder<K, V> combine(Builder<K, V> other) {
-      putAll(other.builderMultimap);
       return this;
     }
 
@@ -600,28 +595,6 @@ public abstract class ImmutableMultimap<K, V> extends AbstractMultimap<K, V>
     };
   }
 
-  @Override
-  Spliterator<Entry<K, V>> entrySpliterator() {
-    return CollectSpliterators.flatMap(
-        asMap().entrySet().spliterator(),
-        keyToValueCollectionEntry -> {
-          K key = keyToValueCollectionEntry.getKey();
-          Collection<V> valueCollection = keyToValueCollectionEntry.getValue();
-          return CollectSpliterators.map(
-              valueCollection.spliterator(), (V value) -> Maps.immutableEntry(key, value));
-        },
-        Spliterator.SIZED | (this instanceof SetMultimap ? Spliterator.DISTINCT : 0),
-        size());
-  }
-
-  @Override
-  public void forEach(BiConsumer<? super K, ? super V> action) {
-    checkNotNull(action);
-    asMap()
-        .forEach(
-            (key, valueCollection) -> valueCollection.forEach(value -> action.accept(key, value)));
-  }
-
   /**
    * Returns an immutable multiset containing all the keys in this multimap, in
    * the same order and with the same frequencies as they appear in this
@@ -652,7 +625,7 @@ public abstract class ImmutableMultimap<K, V> extends AbstractMultimap<K, V>
     }
 
     @Override
-    public ImmutableSet<K> elementSet() {
+    public Set<K> elementSet() {
       return keySet();
     }
 

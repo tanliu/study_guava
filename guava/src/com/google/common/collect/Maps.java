@@ -30,6 +30,7 @@ import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.Converter;
 import com.google.common.base.Equivalence;
 import com.google.common.base.Function;
+import com.google.common.base.Joiner.MapJoiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
@@ -60,15 +61,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
-import java.util.function.Consumer;
-import java.util.stream.Collector;
 import javax.annotation.Nullable;
 
 /**
@@ -155,104 +149,6 @@ public final class Maps {
     }
   }
 
-  private static class Accumulator<K extends Enum<K>, V> {
-    private final BinaryOperator<V> mergeFunction;
-    private EnumMap<K, V> map = null;
-
-    Accumulator(BinaryOperator<V> mergeFunction) {
-      this.mergeFunction = mergeFunction;
-    }
-
-    void put(K key, V value) {
-      if (map == null) {
-        map = new EnumMap<K, V>(key.getDeclaringClass());
-      }
-      map.merge(key, value, mergeFunction);
-    }
-
-    Accumulator<K, V> combine(Accumulator<K, V> other) {
-      if (this.map == null) {
-        return other;
-      } else if (other.map == null) {
-        return this;
-      } else {
-        other.map.forEach(this::put);
-        return this;
-      }
-    }
-
-    ImmutableMap<K, V> toImmutableMap() {
-      return (map == null) ? ImmutableMap.<K, V>of() : ImmutableEnumMap.asImmutable(map);
-    }
-  }
-
-  /**
-   * Returns a {@link Collector} that accumulates elements into an {@code ImmutableMap} whose keys
-   * and values are the result of applying the provided mapping functions to the input elements. The
-   * resulting implementation is specialized for enum key types. The returned map and its views will
-   * iterate over keys in their enum definition order, not encounter order.
-   *
-   * <p>If the mapped keys contain duplicates, an {@code IllegalArgumentException} is thrown when
-   * the collection operation is performed. (This differs from the {@code Collector} returned by
-   * {@link java.util.stream.Collectors#toMap(java.util.function.Function,
-   * java.util.function.Function) Collectors.toMap(Function, Function)}, which throws an
-   * {@code IllegalStateException}.)
-   *
-   * @since 21.0
-   */
-  @Beta
-  public static <T, K extends Enum<K>, V> Collector<T, ?, ImmutableMap<K, V>> toImmutableEnumMap(
-      java.util.function.Function<? super T, ? extends K> keyFunction,
-      java.util.function.Function<? super T, ? extends V> valueFunction) {
-    checkNotNull(keyFunction);
-    checkNotNull(valueFunction);
-    return Collector.of(
-        () ->
-            new Accumulator<K, V>(
-                (v1, v2) -> {
-                  throw new IllegalArgumentException("Multiple values for key: " + v1 + ", " + v2);
-                }),
-        (accum, t) -> {
-          K key = checkNotNull(keyFunction.apply(t), "Null key for input %s", t);
-          V newValue = checkNotNull(valueFunction.apply(t), "Null value for input %s", t);
-          accum.put(key, newValue);
-        },
-        Accumulator::combine,
-        Accumulator::toImmutableMap,
-        Collector.Characteristics.UNORDERED);
-  }
-
-  /**
-   * Returns a {@link Collector} that accumulates elements into an {@code ImmutableMap} whose keys
-   * and values are the result of applying the provided mapping functions to the input elements. The
-   * resulting implementation is specialized for enum key types. The returned map and its views will
-   * iterate over keys in their enum definition order, not encounter order.
-   *
-   * <p>If the mapped keys contain duplicates, the values are merged using the specified merging
-   * function.
-   *
-   * @since 21.0
-   */
-  @Beta
-  public static <T, K extends Enum<K>, V> Collector<T, ?, ImmutableMap<K, V>> toImmutableEnumMap(
-      java.util.function.Function<? super T, ? extends K> keyFunction,
-      java.util.function.Function<? super T, ? extends V> valueFunction,
-      BinaryOperator<V> mergeFunction) {
-    checkNotNull(keyFunction);
-    checkNotNull(valueFunction);
-    checkNotNull(mergeFunction);
-    // not UNORDERED because we don't know if mergeFunction is commutative
-    return Collector.of(
-        () -> new Accumulator<K, V>(mergeFunction),
-        (accum, t) -> {
-          K key = checkNotNull(keyFunction.apply(t), "Null key for input %s", t);
-          V newValue = checkNotNull(valueFunction.apply(t), "Null value for input %s", t);
-          accum.put(key, newValue);
-        },
-        Accumulator::combine,
-        Accumulator::toImmutableMap);
-  }
-
   /**
    * Creates a <i>mutable</i>, empty {@code HashMap} instance.
    *
@@ -291,8 +187,9 @@ public final class Maps {
   }
 
   /**
-   * Returns a capacity that is sufficient to keep the map from being resized as long as it grows no
-   * larger than expectedSize and the load factor is ≥ its default (0.75).
+   * Returns a capacity that is sufficient to keep the map from being resized as
+   * long as it grows no larger than expectedSize and the load factor is >= its
+   * default (0.75).
    */
   static int capacity(int expectedSize) {
     if (expectedSize < 3) {
@@ -542,6 +439,9 @@ public final class Maps {
    * Computes the difference between two maps. This difference is an immutable
    * snapshot of the state of the maps at the time this method is called. It
    * will never change, even if the maps change at a later time.
+   *
+   * <p>Values are compared using a provided equivalence, in the case of
+   * equality, the value on the 'left' is returned in the difference.
    *
    * <p>Since this method uses {@code HashMap} instances internally, the keys of
    * the supplied maps must be well-behaved with respect to
@@ -933,17 +833,12 @@ public final class Maps {
 
     @Override
     public V get(@Nullable Object key) {
-      return getOrDefault(key, null);
-    }
-
-    @Override
-    public V getOrDefault(@Nullable Object key, @Nullable V defaultValue) {
       if (Collections2.safeContains(backingSet(), key)) {
         @SuppressWarnings("unchecked") // unsafe, but Javadoc warns about it
         K k = (K) key;
         return function.apply(k);
       } else {
-        return defaultValue;
+        return null;
       }
     }
 
@@ -978,13 +873,6 @@ public final class Maps {
         }
       }
       return new EntrySetImpl();
-    }
-
-    @Override
-    public void forEach(BiConsumer<? super K, ? super V> action) {
-      checkNotNull(action);
-      // avoids allocation of entries
-      backingSet().forEach(k -> action.accept(k, function.apply(k)));
     }
   }
 
@@ -1084,18 +972,12 @@ public final class Maps {
     @Override
     @Nullable
     public V get(@Nullable Object key) {
-      return getOrDefault(key, null);
-    }
-
-    @Override
-    @Nullable
-    public V getOrDefault(@Nullable Object key, @Nullable V defaultValue) {
       if (Collections2.safeContains(set, key)) {
         @SuppressWarnings("unchecked") // unsafe, but Javadoc warns about it
         K k = (K) key;
         return function.apply(k);
       } else {
-        return defaultValue;
+        return null;
       }
     }
 
@@ -1107,16 +989,6 @@ public final class Maps {
     @Override
     Iterator<Entry<K, V>> entryIterator() {
       return asMapEntryIterator(set, function);
-    }
-
-    @Override
-    Spliterator<Entry<K, V>> entrySpliterator() {
-      return CollectSpliterators.map(set.spliterator(), e -> immutableEntry(e, function.apply(e)));
-    }
-
-    @Override
-    public void forEach(BiConsumer<? super K, ? super V> action) {
-      set.forEach(k -> action.accept(k, function.apply(k)));
     }
 
     @Override
@@ -1326,8 +1198,8 @@ public final class Maps {
    *         keyFunction} on each value in the input collection to that value
    * @throws IllegalArgumentException if {@code keyFunction} produces the same
    *         key for more than one value in the input collection
-   * @throws NullPointerException if any element of {@code values} is {@code
-   *         null}, or if {@code keyFunction} produces {@code null} for any value
+   * @throws NullPointerException if any elements of {@code values} is null, or
+   *         if {@code keyFunction} produces {@code null} for any value
    */
   @CanIgnoreReturnValue
   public static <K, V> ImmutableMap<K, V> uniqueIndex(
@@ -1360,8 +1232,8 @@ public final class Maps {
    *         keyFunction} on each value in the input collection to that value
    * @throws IllegalArgumentException if {@code keyFunction} produces the same
    *         key for more than one value in the input collection
-   * @throws NullPointerException if any element of {@code values} is {@code
-   *         null}, or if {@code keyFunction} produces {@code null} for any value
+   * @throws NullPointerException if any elements of {@code values} is null, or
+   *         if {@code keyFunction} produces {@code null} for any value
    * @since 10.0
    */
   @CanIgnoreReturnValue
@@ -1611,7 +1483,7 @@ public final class Maps {
    * serializable.
    *
    * @param bimap the bimap to be wrapped in a synchronized view
-   * @return a synchronized view of the specified bimap
+   * @return a sychronized view of the specified bimap
    */
   public static <K, V> BiMap<K, V> synchronizedBiMap(BiMap<K, V> bimap) {
     return Synchronized.biMap(bimap, null);
@@ -1976,7 +1848,7 @@ public final class Maps {
    */
   @GwtIncompatible // NavigableMap
   public static <K, V1, V2> NavigableMap<K, V2> transformEntries(
-      final NavigableMap<K, V1> fromMap, EntryTransformer<? super K, ? super V1, V2> transformer) {
+      NavigableMap<K, V1> fromMap, EntryTransformer<? super K, ? super V1, V2> transformer) {
     return new TransformedEntriesNavigableMap<K, V1, V2>(fromMap, transformer);
   }
 
@@ -1990,7 +1862,6 @@ public final class Maps {
    * @param <V2> the value type of the output entry
    * @since 7.0
    */
-  @FunctionalInterface
   public interface EntryTransformer<K, V1, V2> {
     /**
      * Determines an output value based on a key-value pair. This method is
@@ -2105,21 +1976,14 @@ public final class Maps {
       return fromMap.containsKey(key);
     }
 
-    @Override
-    @Nullable
-    public V2 get(@Nullable Object key) {
-      return getOrDefault(key, null);
-    }
-
     // safe as long as the user followed the <b>Warning</b> in the javadoc
     @SuppressWarnings("unchecked")
     @Override
-    @Nullable
-    public V2 getOrDefault(@Nullable Object key, @Nullable V2 defaultValue) {
+    public V2 get(Object key) {
       V1 value = fromMap.get(key);
       return (value != null || fromMap.containsKey(key))
           ? transformer.transformEntry((K) key, value)
-          : defaultValue;
+          : null;
     }
 
     // safe as long as the user followed the <b>Warning</b> in the javadoc
@@ -2145,19 +2009,6 @@ public final class Maps {
     Iterator<Entry<K, V2>> entryIterator() {
       return Iterators.transform(
           fromMap.entrySet().iterator(), Maps.<K, V1, V2>asEntryToEntryFunction(transformer));
-    }
-
-    @Override
-    Spliterator<Entry<K, V2>> entrySpliterator() {
-      return CollectSpliterators.map(
-          fromMap.entrySet().spliterator(), Maps.<K, V1, V2>asEntryToEntryFunction(transformer));
-    }
-
-    @Override
-    public void forEach(BiConsumer<? super K, ? super V2> action) {
-      checkNotNull(action);
-      // avoids creating new Entry<K, V2> objects
-      fromMap.forEach((k, v1) -> action.accept(k, transformer.transformEntry(k, v1)));
     }
 
     @Override
@@ -3322,16 +3173,6 @@ public final class Maps {
     }
 
     @Override
-    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
-      unfiltered()
-          .replaceAll(
-              (key, value) ->
-                  predicate.apply(Maps.immutableEntry(key, value))
-                      ? function.apply(key, value)
-                      : value);
-    }
-
-    @Override
     public BiMap<V, K> inverse() {
       return inverse;
     }
@@ -3622,11 +3463,6 @@ public final class Maps {
 
     abstract Iterator<Entry<K, V>> entryIterator();
 
-    Spliterator<Entry<K, V>> entrySpliterator() {
-      return Spliterators.spliterator(
-          entryIterator(), size(), Spliterator.SIZED | Spliterator.DISTINCT);
-    }
-
     @Override
     public Set<Entry<K, V>> entrySet() {
       return new EntrySet<K, V>() {
@@ -3639,21 +3475,7 @@ public final class Maps {
         public Iterator<Entry<K, V>> iterator() {
           return entryIterator();
         }
-
-        @Override
-        public Spliterator<Entry<K, V>> spliterator() {
-          return entrySpliterator();
-        }
-
-        @Override
-        public void forEach(Consumer<? super Entry<K, V>> action) {
-          forEachEntry(action);
-        }
       };
-    }
-
-    void forEachEntry(Consumer<? super Entry<K, V>> action) {
-      entryIterator().forEachRemaining(action);
     }
 
     @Override
@@ -3774,19 +3596,14 @@ public final class Maps {
     return false;
   }
 
+  static final MapJoiner STANDARD_JOINER = Collections2.STANDARD_JOINER.withKeyValueSeparator("=");
+
   /**
    * An implementation of {@link Map#toString}.
    */
   static String toStringImpl(Map<?, ?> map) {
     StringBuilder sb = Collections2.newStringBuilderForCollection(map.size()).append('{');
-    boolean first = true;
-    for (Map.Entry<?, ?> entry : map.entrySet()) {
-      if (!first) {
-        sb.append(", ");
-      }
-      first = false;
-      sb.append(entry.getKey()).append('=').append(entry.getValue());
-    }
+    STANDARD_JOINER.appendTo(sb, map);
     return sb.append('}').toString();
   }
 
@@ -3813,13 +3630,6 @@ public final class Maps {
     @Override
     public Iterator<K> iterator() {
       return keyIterator(map().entrySet().iterator());
-    }
-
-    @Override
-    public void forEach(Consumer<? super K> action) {
-      checkNotNull(action);
-      // avoids entry allocation for those maps that allocate entries on iteration
-      map.forEach((k, v) -> action.accept(k));
     }
 
     @Override
@@ -4000,13 +3810,6 @@ public final class Maps {
     @Override
     public Iterator<V> iterator() {
       return valueIterator(map().entrySet().iterator());
-    }
-
-    @Override
-    public void forEach(Consumer<? super V> action) {
-      checkNotNull(action);
-      // avoids allocation of entries for those maps that generate fresh entries on iteration
-      map.forEach((k, v) -> action.accept(v));
     }
 
     @Override

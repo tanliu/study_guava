@@ -17,8 +17,6 @@
 package com.google.common.collect;
 
 import com.google.common.base.Function;
-import com.google.common.collect.Interners.InternerImpl;
-import com.google.common.collect.MapMakerInternalMap.Strength;
 import com.google.common.testing.GcFinalization;
 import com.google.common.testing.NullPointerTester;
 import java.lang.ref.WeakReference;
@@ -48,16 +46,6 @@ public class InternersTest extends TestCase {
     } catch (NullPointerException ok) {}
   }
 
-  public void testStrong_builder() {
-    int concurrencyLevel = 42;
-    Interner<Object> interner = Interners.newBuilder()
-        .strong()
-        .concurrencyLevel(concurrencyLevel)
-        .build();
-    InternerImpl<Object> internerImpl = (InternerImpl<Object>) interner;
-    assertEquals(Strength.STRONG, internerImpl.map.keyStrength());
-  }
-
   public void testWeak_simplistic() {
     String canonical = "a";
     String not = new String("a");
@@ -73,17 +61,6 @@ public class InternersTest extends TestCase {
       pool.intern(null);
       fail();
     } catch (NullPointerException ok) {}
-  }
-
-  public void testWeak_builder() {
-    int concurrencyLevel = 42;
-    Interner<Object> interner = Interners.newBuilder()
-        .weak()
-        .concurrencyLevel(concurrencyLevel)
-        .build();
-    InternerImpl<Object> internerImpl = (InternerImpl<Object>) interner;
-    assertEquals(Strength.WEAK, internerImpl.map.keyStrength());
-    assertEquals(concurrencyLevel, internerImpl.map.concurrencyLevel);
   }
 
   public void testWeak_afterGC() throws InterruptedException {
@@ -113,23 +90,5 @@ public class InternersTest extends TestCase {
 
   public void testNullPointerExceptions() {
     new NullPointerTester().testAllPublicStaticMethods(Interners.class);
-  }
-
-  public void testConcurrencyLevel_Zero() {
-    Interners.InternerBuilder builder = Interners.newBuilder();
-    try {
-      builder.concurrencyLevel(0);
-      fail();
-    } catch (IllegalArgumentException expected) {
-    }
-  }
-
-  public void testConcurrencyLevel_Negative() {
-    Interners.InternerBuilder builder = Interners.newBuilder();
-    try {
-      builder.concurrencyLevel(-42);
-      fail();
-    } catch (IllegalArgumentException expected) {
-    }
   }
 }

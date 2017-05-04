@@ -168,16 +168,6 @@ public void testSingletonBuilder__CreationTests() throws Exception {
   testCase.testSingletonBuilder();
 }
 
-public void testToImmutableBiMap__CreationTests() throws Exception {
-  com.google.common.collect.ImmutableBiMapTest.CreationTests testCase = new com.google.common.collect.ImmutableBiMapTest.CreationTests();
-  testCase.testToImmutableBiMap();
-}
-
-public void testToImmutableBiMap_exceptionOnDuplicateKey__CreationTests() throws Exception {
-  com.google.common.collect.ImmutableBiMapTest.CreationTests testCase = new com.google.common.collect.ImmutableBiMapTest.CreationTests();
-  testCase.testToImmutableBiMap_exceptionOnDuplicateKey();
-}
-
 public void testClear__InverseMapTests() throws Exception {
   com.google.common.collect.ImmutableBiMapTest.InverseMapTests testCase = new com.google.common.collect.ImmutableBiMapTest.InverseMapTests();
   testCase.testClear();

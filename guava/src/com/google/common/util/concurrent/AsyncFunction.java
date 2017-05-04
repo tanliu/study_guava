@@ -20,13 +20,12 @@ import javax.annotation.Nullable;
 
 /**
  * Transforms a value, possibly asynchronously. For an example usage and more information, see
- * {@link Futures#transformAsync(ListenableFuture, AsyncFunction, Executor)}.
+ * {@link Futures#transformAsync(ListenableFuture, AsyncFunction)}.
  *
  * @author Chris Povirk
  * @since 11.0
  */
 @GwtCompatible
-@FunctionalInterface
 public interface AsyncFunction<I, O> {
   /**
    * Returns an output {@code Future} to use in place of the given {@code input}. The output {@code

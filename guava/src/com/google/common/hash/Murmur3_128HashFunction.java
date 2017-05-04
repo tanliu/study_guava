@@ -19,7 +19,7 @@
 
 /*
  * Source:
- * https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
+ * http://code.google.com/p/smhasher/source/browse/trunk/MurmurHash3.cpp
  * (Modified to adapt to Guava coding conventions and to use the HashFunction interface)
  */
 

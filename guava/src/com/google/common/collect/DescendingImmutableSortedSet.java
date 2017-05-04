@@ -25,7 +25,7 @@ import javax.annotation.Nullable;
  * @author Louis Wasserman
  */
 @GwtIncompatible
-final class DescendingImmutableSortedSet<E> extends ImmutableSortedSet<E> {
+class DescendingImmutableSortedSet<E> extends ImmutableSortedSet<E> {
   private final ImmutableSortedSet<E> forward;
 
   DescendingImmutableSortedSet(ImmutableSortedSet<E> forward) {

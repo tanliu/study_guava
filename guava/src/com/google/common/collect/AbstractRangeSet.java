@@ -56,17 +56,26 @@ abstract class AbstractRangeSet<C extends Comparable> implements RangeSet<C> {
 
   @Override
   public boolean enclosesAll(RangeSet<C> other) {
-    return enclosesAll(other.asRanges());
+    for (Range<C> range : other.asRanges()) {
+      if (!encloses(range)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override
   public void addAll(RangeSet<C> other) {
-    addAll(other.asRanges());
+    for (Range<C> range : other.asRanges()) {
+      add(range);
+    }
   }
 
   @Override
   public void removeAll(RangeSet<C> other) {
-    removeAll(other.asRanges());
+    for (Range<C> range : other.asRanges()) {
+      remove(range);
+    }
   }
 
   @Override

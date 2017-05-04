@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkPositionIndexes;
 
 import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
+import com.google.common.annotations.GwtIncompatible;
 import com.google.common.base.Converter;
 import java.io.Serializable;
 import java.util.AbstractList;
@@ -43,7 +44,7 @@ import javax.annotation.Nullable;
  * @author Kevin Bourrillion
  * @since 1.0
  */
-@GwtCompatible
+@GwtCompatible(emulated = true)
 public final class Ints {
   private Ints() {}
 
@@ -84,7 +85,10 @@ public final class Ints {
    */
   public static int checkedCast(long value) {
     int result = (int) value;
-    checkArgument(result == value, "Out of range: %s", value);
+    if (result != value) {
+      // don't use checkArgument here, to avoid boxing
+      throw new IllegalArgumentException("Out of range: " + value);
+    }
     return result;
   }
 
@@ -252,25 +256,6 @@ public final class Ints {
   }
 
   /**
-   * Returns the value nearest to {@code value} which is within the closed range {@code [min..max]}.
-   *
-   * <p>If {@code value} is within the range {@code [min..max]}, {@code value} is returned
-   * unchanged. If {@code value} is less than {@code min}, {@code min} is returned, and if
-   * {@code value} is greater than {@code max}, {@code max} is returned.
-   *
-   * @param value the {@code int} value to constrain
-   * @param min the lower bound (inclusive) of the range to constrain {@code value} to
-   * @param max the upper bound (inclusive) of the range to constrain {@code value} to
-   * @throws IllegalArgumentException if {@code min > max}
-   * @since 21.0
-   */
-  @Beta
-  public static int constrainToRange(int value, int min, int max) {
-    checkArgument(min <= max, "min (%s) must be less than or equal to max (%s)", min, max);
-    return Math.min(Math.max(value, min), max);
-  }
-
-  /**
    * Returns the values from each provided array combined into a single array. For example,
    * {@code concat(new int[] {a, b}, new int[] {}, new int[] {c}} returns the array {@code {a, b,
    * c}}.
@@ -301,6 +286,7 @@ public final class Ints {
    * use a shared {@link java.nio.ByteBuffer} instance, or use
    * {@link com.google.common.io.ByteStreams#newDataOutput()} to get a growable buffer.
    */
+  @GwtIncompatible // doesn't work
   public static byte[] toByteArray(int value) {
     return new byte[] {
       (byte) (value >> 24), (byte) (value >> 16), (byte) (value >> 8), (byte) value
@@ -318,6 +304,7 @@ public final class Ints {
    *
    * @throws IllegalArgumentException if {@code bytes} has fewer than 4 elements
    */
+  @GwtIncompatible // doesn't work
   public static int fromByteArray(byte[] bytes) {
     checkArgument(bytes.length >= BYTES, "array too small: %s < %s", bytes.length, BYTES);
     return fromBytes(bytes[0], bytes[1], bytes[2], bytes[3]);
@@ -329,6 +316,7 @@ public final class Ints {
    *
    * @since 7.0
    */
+  @GwtIncompatible // doesn't work
   public static int fromBytes(byte b1, byte b2, byte b3, byte b4) {
     return b1 << 24 | (b2 & 0xFF) << 16 | (b3 & 0xFF) << 8 | (b4 & 0xFF);
   }
@@ -624,7 +612,11 @@ public final class Ints {
     }
 
     int[] toIntArray() {
-      return Arrays.copyOfRange(array, start, end);
+      // Arrays.copyOfRange() is not available under GWT
+      int size = size();
+      int[] result = new int[size];
+      System.arraycopy(array, start, result, 0, size);
+      return result;
     }
 
     private static final long serialVersionUID = 0;

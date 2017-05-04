@@ -24,8 +24,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * A semi-persistent mapping from keys to values. Values are automatically loaded by the cache, and
- * are stored in the cache until either evicted or manually invalidated. The common way to build
- * instances is using {@link CacheBuilder}.
+ * are stored in the cache until either evicted or manually invalidated.
  *
  * <p>Implementations of this interface are expected to be thread-safe, and can be safely accessed
  * by multiple concurrent threads.

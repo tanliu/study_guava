@@ -100,7 +100,7 @@ final class ConfigurableMutableValueGraph<N, V> extends ConfigurableValueGraph<N
 
   @Override
   @CanIgnoreReturnValue
-  public boolean removeNode(N node) {
+  public boolean removeNode(Object node) {
     checkNotNull(node, "node");
 
     GraphConnections<N, V> connections = nodeConnections.get(node);
@@ -133,7 +133,7 @@ final class ConfigurableMutableValueGraph<N, V> extends ConfigurableValueGraph<N
 
   @Override
   @CanIgnoreReturnValue
-  public V removeEdge(N nodeU, N nodeV) {
+  public V removeEdge(Object nodeU, Object nodeV) {
     checkNotNull(nodeU, "nodeU");
     checkNotNull(nodeV, "nodeV");
 

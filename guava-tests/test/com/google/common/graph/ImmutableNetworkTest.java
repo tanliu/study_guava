@@ -30,14 +30,14 @@ public class ImmutableNetworkTest {
   public void immutableNetwork() {
     MutableNetwork<String, Integer> mutableNetwork = NetworkBuilder.directed().build();
     mutableNetwork.addNode("A");
-    ImmutableNetwork<String, Integer> immutableNetwork = ImmutableNetwork.copyOf(mutableNetwork);
+    Network<String, Integer> immutableNetwork = ImmutableNetwork.copyOf(mutableNetwork);
 
     assertThat(immutableNetwork.asGraph()).isInstanceOf(ImmutableGraph.class);
     assertThat(immutableNetwork).isNotInstanceOf(MutableNetwork.class);
-    assertThat(immutableNetwork).isEqualTo(mutableNetwork);
+    assertThat(Graphs.equivalent(immutableNetwork, mutableNetwork)).isTrue();
 
     mutableNetwork.addNode("B");
-    assertThat(immutableNetwork).isNotEqualTo(mutableNetwork);
+    assertThat(Graphs.equivalent(immutableNetwork, mutableNetwork)).isFalse();
   }
 
   @Test

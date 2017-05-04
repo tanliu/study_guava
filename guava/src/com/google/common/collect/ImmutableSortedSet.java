@@ -20,7 +20,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ObjectArrays.checkElementsNotNull;
 
-import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.GwtIncompatible;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -30,15 +29,10 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NavigableSet;
 import java.util.SortedSet;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.function.Consumer;
-import java.util.stream.Collector;
 import javax.annotation.Nullable;
 
 /**
@@ -64,24 +58,6 @@ import javax.annotation.Nullable;
 @SuppressWarnings("serial") // we're overriding default serialization
 public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxverideShim<E>
     implements NavigableSet<E>, SortedIterable<E> {
-  static final int SPLITERATOR_CHARACTERISTICS =
-      ImmutableSet.SPLITERATOR_CHARACTERISTICS | Spliterator.SORTED;
-
-  /**
-   * Returns a {@code Collector} that accumulates the input elements into a new
-   * {@code ImmutableSortedSet}, ordered by the specified comparator.
-   *
-   * <p>If the elements contain duplicates (according to the comparator),
-   * only the first duplicate in encounter order will appear in the result.
-   *
-   * @since 21.0
-   */
-  @Beta
-  public static <E> Collector<E, ?, ImmutableSortedSet<E>> toImmutableSortedSet(
-      Comparator<? super E> comparator) {
-    return CollectCollectors.toImmutableSortedSet(comparator);
-  }
-
   static <E> RegularImmutableSortedSet<E> emptySet(Comparator<? super E> comparator) {
     if (Ordering.natural().equals(comparator)) {
       return (RegularImmutableSortedSet<E>) RegularImmutableSortedSet.NATURAL_EMPTY_SET;
@@ -421,7 +397,7 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
    * ordered by the reverse of their natural ordering.
    */
   public static <E extends Comparable<?>> Builder<E> reverseOrder() {
-    return new Builder<E>(Collections.reverseOrder());
+    return new Builder<E>(Ordering.natural().reverse());
   }
 
   /**
@@ -522,13 +498,6 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
     @Override
     public Builder<E> addAll(Iterator<? extends E> elements) {
       super.addAll(elements);
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    @Override
-    Builder<E> combine(ArrayBasedBuilder<E> builder) {
-      super.combine(builder);
       return this;
     }
 
@@ -767,33 +736,9 @@ public abstract class ImmutableSortedSet<E> extends ImmutableSortedSetFauxveride
     return result;
   }
 
-  // Most classes should implement this as new DescendingImmutableSortedSet<E>(this),
-  // but we push down that implementation because ProGuard can't eliminate it even when it's always
-  // overridden.
   @GwtIncompatible // NavigableSet
-  abstract ImmutableSortedSet<E> createDescendingSet();
-
-  @Override
-  public Spliterator<E> spliterator() {
-    return new Spliterators.AbstractSpliterator<E>(
-        size(), SPLITERATOR_CHARACTERISTICS | Spliterator.SIZED) {
-      final UnmodifiableIterator<E> iterator = iterator();
-
-      @Override
-      public boolean tryAdvance(Consumer<? super E> action) {
-        if (iterator.hasNext()) {
-          action.accept(iterator.next());
-          return true;
-        } else {
-          return false;
-        }
-      }
-
-      @Override
-      public Comparator<? super E> getComparator() {
-        return comparator;
-      }
-    };
+  ImmutableSortedSet<E> createDescendingSet() {
+    return new DescendingImmutableSortedSet<E>(this);
   }
 
   /**

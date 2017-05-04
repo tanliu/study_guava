@@ -45,7 +45,7 @@ interface NetworkConnections<N, E> {
    * Returns the set of edges connecting the origin node to {@code node}. For networks without
    * parallel edges, this set cannot be of size greater than one.
    */
-  Set<E> edgesConnecting(N node);
+  Set<E> edgesConnecting(Object node);
 
   /**
    * Returns the node that is opposite the origin node along {@code edge}.

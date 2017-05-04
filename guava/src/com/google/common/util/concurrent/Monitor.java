@@ -23,7 +23,6 @@ import com.google.j2objc.annotations.Weak;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.BooleanSupplier;
 import javax.annotation.concurrent.GuardedBy;
 
 /**
@@ -198,7 +197,6 @@ import javax.annotation.concurrent.GuardedBy;
  */
 @Beta
 @GwtIncompatible
-@SuppressWarnings("GuardedBy") // TODO(b/35466881): Fix or suppress.
 public final class Monitor {
   // TODO(user): Use raw LockSupport or AbstractQueuedSynchronizer instead of ReentrantLock.
   // TODO(user): "Port" jsr166 tests for ReentrantLock.
@@ -359,21 +357,6 @@ public final class Monitor {
   public Monitor(boolean fair) {
     this.fair = fair;
     this.lock = new ReentrantLock(fair);
-  }
-
-  /**
-   * Creates a new {@link Guard} for {@code this} monitor.
-   *
-   * @Param isSatisfied The guards boolean condition.  See {@link Guard#isSatisfied}.
-   */
-  public Guard newGuard(final BooleanSupplier isSatisfied) {
-    checkNotNull(isSatisfied, "isSatisfied");
-    return new Guard(this) {
-      @Override
-      public boolean isSatisfied() {
-        return isSatisfied.getAsBoolean();
-      }
-    };
   }
 
   /**

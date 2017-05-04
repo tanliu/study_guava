@@ -17,6 +17,7 @@ package com.google.common.collect;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.google.common.annotations.GwtCompatible;
+import com.google.common.collect.Table.Cell;
 import com.google.j2objc.annotations.WeakOuter;
 
 import java.util.Collections;
@@ -150,11 +151,13 @@ abstract class RegularImmutableTable<R, C, V> extends ImmutableTable<R, C, V> {
     ImmutableSet<R> rowSpace =
         (rowComparator == null)
             ? ImmutableSet.copyOf(rowSpaceBuilder)
-            : ImmutableSet.copyOf(ImmutableList.sortedCopyOf(rowComparator, rowSpaceBuilder));
+            : ImmutableSet.copyOf(
+                Ordering.from(rowComparator).immutableSortedCopy(rowSpaceBuilder));
     ImmutableSet<C> columnSpace =
         (columnComparator == null)
             ? ImmutableSet.copyOf(columnSpaceBuilder)
-            : ImmutableSet.copyOf(ImmutableList.sortedCopyOf(columnComparator, columnSpaceBuilder));
+            : ImmutableSet.copyOf(
+                Ordering.from(columnComparator).immutableSortedCopy(columnSpaceBuilder));
 
     return forOrderedComponents(cellList, rowSpace, columnSpace);
   }

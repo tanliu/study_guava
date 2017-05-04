@@ -23,6 +23,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.errorprone.annotations.Immutable;
+import javax.annotation.Nullable;
 
 /**
  * A {@link ValueGraph} whose elements and structural relationships will never change. Instances of
@@ -39,9 +40,8 @@ import com.google.errorprone.annotations.Immutable;
  * @since 20.0
  */
 @Beta
-@Immutable(containerOf = {"N", "V"})
-@SuppressWarnings("Immutable") // Extends ConfigurableValueGraph but uses ImmutableMaps.
-public final class ImmutableValueGraph<N, V> extends ConfigurableValueGraph<N, V> {
+public final class ImmutableValueGraph<N, V> extends ImmutableGraph.ValueBackedImpl<N, V>
+    implements ValueGraph<N, V> {
 
   private ImmutableValueGraph(ValueGraph<N, V> graph) {
     super(ValueGraphBuilder.from(graph), getNodeConnections(graph), graph.edges().size());
@@ -62,11 +62,6 @@ public final class ImmutableValueGraph<N, V> extends ConfigurableValueGraph<N, V
   @Deprecated
   public static <N, V> ImmutableValueGraph<N, V> copyOf(ImmutableValueGraph<N, V> graph) {
     return checkNotNull(graph);
-  }
-
-  @Override
-  public ImmutableGraph<N> asGraph() {
-    return new ImmutableGraph<N>(this); // safe because the view is effectively immutable
   }
 
   private static <N, V> ImmutableMap<N, GraphConnections<N, V>> getNodeConnections(
@@ -95,5 +90,20 @@ public final class ImmutableValueGraph<N, V> extends ConfigurableValueGraph<N, V
             graph.predecessors(node), Maps.asMap(graph.successors(node), successorNodeToValueFn))
         : UndirectedGraphConnections.ofImmutable(
             Maps.asMap(graph.adjacentNodes(node), successorNodeToValueFn));
+  }
+
+  @Override
+  public V edgeValue(Object nodeU, Object nodeV) {
+    return backingValueGraph.edgeValue(nodeU, nodeV);
+  }
+
+  @Override
+  public V edgeValueOrDefault(Object nodeU, Object nodeV, @Nullable V defaultValue) {
+    return backingValueGraph.edgeValueOrDefault(nodeU, nodeV, defaultValue);
+  }
+
+  @Override
+  public String toString() {
+    return backingValueGraph.toString();
   }
 }

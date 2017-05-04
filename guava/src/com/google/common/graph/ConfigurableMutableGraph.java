@@ -37,7 +37,7 @@ final class ConfigurableMutableGraph<N> extends ForwardingGraph<N> implements Mu
   }
 
   @Override
-  protected BaseGraph<N> delegate() {
+  protected Graph<N> delegate() {
     return backingValueGraph;
   }
 
@@ -52,12 +52,12 @@ final class ConfigurableMutableGraph<N> extends ForwardingGraph<N> implements Mu
   }
 
   @Override
-  public boolean removeNode(N node) {
+  public boolean removeNode(Object node) {
     return backingValueGraph.removeNode(node);
   }
 
   @Override
-  public boolean removeEdge(N nodeU, N nodeV) {
+  public boolean removeEdge(Object nodeU, Object nodeV) {
     return backingValueGraph.removeEdge(nodeU, nodeV) != null;
   }
 }

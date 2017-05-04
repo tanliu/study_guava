@@ -50,11 +50,12 @@ import javax.annotation.Nullable;
 @Beta
 @GwtIncompatible
 public interface RangeSet<C extends Comparable> {
-  // TODO(lowasser): consider adding default implementations of some of these methods
 
   // Query methods
 
-  /** Determines whether any of this range set's member ranges contains {@code value}. */
+  /**
+   * Determines whether any of this range set's member ranges contains {@code value}.
+   */
   boolean contains(C value);
 
   /**
@@ -88,25 +89,6 @@ public interface RangeSet<C extends Comparable> {
    * {@code other}.
    */
   boolean enclosesAll(RangeSet<C> other);
-
-  /**
-   * Returns {@code true} if for each range in {@code other} there exists a member range in this
-   * range set which {@linkplain Range#encloses encloses} it. Returns {@code true} if {@code other}
-   * is empty.
-   *
-   * <p>This is equivalent to checking if this range set {@link #encloses} each range in {@code
-   * other}.
-   *
-   * @since 21.0
-   */
-  default boolean enclosesAll(Iterable<Range<C>> other) {
-    for (Range<C> range : other) {
-      if (!encloses(range)) {
-        return false;
-      }
-    }
-    return true;
-  }
 
   /**
    * Returns {@code true} if this range set contains no ranges.
@@ -210,23 +192,6 @@ public interface RangeSet<C extends Comparable> {
   void addAll(RangeSet<C> other);
 
   /**
-   * Adds all of the specified ranges to this range set (optional operation). After this operation,
-   * this range set is the minimal range set that {@linkplain #enclosesAll(RangeSet) encloses} both
-   * the original range set and each range in {@code other}.
-   *
-   * <p>This is equivalent to calling {@link #add} on each of the ranges in {@code other} in turn.
-   *
-   * @throws UnsupportedOperationException if this range set does not support the {@code addAll}
-   *     operation
-   * @since 21.0
-   */
-  default void addAll(Iterable<Range<C>> ranges) {
-    for (Range<C> range : ranges) {
-      add(range);
-    }
-  }
-
-  /**
    * Removes all of the ranges from the specified range set from this range set (optional
    * operation). After this operation, if {@code other.contains(c)}, {@code this.contains(c)} will
    * return {@code false}.
@@ -238,22 +203,6 @@ public interface RangeSet<C extends Comparable> {
    *         operation
    */
   void removeAll(RangeSet<C> other);
-
-  /**
-   * Removes all of the specified ranges from this range set (optional operation).
-   *
-   * <p>This is equivalent to calling {@link #remove} on each of the ranges in {@code other} in
-   * turn.
-   *
-   * @throws UnsupportedOperationException if this range set does not support the {@code removeAll}
-   *     operation
-   * @since 21.0
-   */
-  default void removeAll(Iterable<Range<C>> ranges) {
-    for (Range<C> range : ranges) {
-      remove(range);
-    }
-  }
 
   // Object methods
 

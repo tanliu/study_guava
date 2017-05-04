@@ -18,8 +18,6 @@ package com.google.common.collect;
 
 import com.google.common.annotations.GwtCompatible;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import javax.annotation.Nullable;
 
 /**
@@ -29,9 +27,9 @@ import javax.annotation.Nullable;
  */
 @GwtCompatible(serializable = true, emulated = true)
 @SuppressWarnings("serial") // uses writeReplace(), not default serialization
-final class RegularImmutableSet<E> extends ImmutableSet<E> {
+final class RegularImmutableSet<E> extends ImmutableSet.Indexed<E> {
   static final RegularImmutableSet<Object> EMPTY =
-      new RegularImmutableSet<Object>(new Object[0], 0, null, 0);
+      new RegularImmutableSet<Object>(ObjectArrays.EMPTY_ARRAY, 0, null, 0);
 
   private final transient Object[] elements;
   // the same elements in hashed positions (plus nulls)
@@ -69,14 +67,8 @@ final class RegularImmutableSet<E> extends ImmutableSet<E> {
     return elements.length;
   }
 
-  @Override
-  public UnmodifiableIterator<E> iterator() {
-    return (UnmodifiableIterator<E>) Iterators.forArray(elements);
-  }
-
-  @Override
-  public Spliterator<E> spliterator() {
-    return Spliterators.spliterator(elements, SPLITERATOR_CHARACTERISTICS);
+  @Override E get(int i) {
+    return (E) elements[i];
   }
 
   @Override

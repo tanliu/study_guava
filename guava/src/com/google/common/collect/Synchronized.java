@@ -40,14 +40,6 @@ import java.util.RandomAccess;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
-import java.util.Spliterator;
-import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 /**
@@ -169,34 +161,6 @@ final class Synchronized {
     }
 
     @Override
-    public Spliterator<E> spliterator() {
-      synchronized (mutex) {
-        return delegate().spliterator();
-      }
-    }
-
-    @Override
-    public Stream<E> stream() {
-      synchronized (mutex) {
-        return delegate().stream();
-      }
-    }
-
-    @Override
-    public Stream<E> parallelStream() {
-      synchronized (mutex) {
-        return delegate().parallelStream();
-      }
-    }
-
-    @Override
-    public void forEach(Consumer<? super E> action) {
-      synchronized (mutex) {
-        delegate().forEach(action);
-      }
-    }
-
-    @Override
     public boolean remove(Object o) {
       synchronized (mutex) {
         return delegate().remove(o);
@@ -214,13 +178,6 @@ final class Synchronized {
     public boolean retainAll(Collection<?> c) {
       synchronized (mutex) {
         return delegate().retainAll(c);
-      }
-    }
-
-    @Override
-    public boolean removeIf(Predicate<? super E> filter) {
-      synchronized (mutex) {
-        return delegate().removeIf(filter);
       }
     }
 
@@ -415,20 +372,6 @@ final class Synchronized {
     public E set(int index, E element) {
       synchronized (mutex) {
         return delegate().set(index, element);
-      }
-    }
-
-    @Override
-    public void replaceAll(UnaryOperator<E> operator) {
-      synchronized (mutex) {
-        delegate().replaceAll(operator);
-      }
-    }
-
-    @Override
-    public void sort(Comparator<? super E> c) {
-      synchronized (mutex) {
-        delegate().sort(c);
       }
     }
 
@@ -707,13 +650,6 @@ final class Synchronized {
           entries = typePreservingCollection(delegate().entries(), mutex);
         }
         return entries;
-      }
-    }
-
-    @Override
-    public void forEach(BiConsumer<? super K, ? super V> action) {
-      synchronized (mutex) {
-        delegate().forEach(action);
       }
     }
 
@@ -1070,23 +1006,9 @@ final class Synchronized {
     }
 
     @Override
-    public void forEach(BiConsumer<? super K, ? super V> action) {
-      synchronized (mutex) {
-        delegate().forEach(action);
-      }
-    }
-
-    @Override
     public V get(Object key) {
       synchronized (mutex) {
         return delegate().get(key);
-      }
-    }
-
-    @Override
-    public V getOrDefault(Object key, V defaultValue) {
-      synchronized (mutex) {
-        return delegate().getOrDefault(key, defaultValue);
       }
     }
 
@@ -1115,57 +1037,6 @@ final class Synchronized {
     }
 
     @Override
-    public V putIfAbsent(K key, V value) {
-      synchronized (mutex) {
-        return delegate().putIfAbsent(key, value);
-      }
-    }
-
-    @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-      synchronized (mutex) {
-        return delegate().replace(key, oldValue, newValue);
-      }
-    }
-
-    @Override
-    public V replace(K key, V value) {
-      synchronized (mutex) {
-        return delegate().replace(key, value);
-      }
-    }
-
-    @Override
-    public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
-      synchronized (mutex) {
-        return delegate().computeIfAbsent(key, mappingFunction);
-      }
-    }
-
-    @Override
-    public V computeIfPresent(
-        K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-      synchronized (mutex) {
-        return delegate().computeIfPresent(key, remappingFunction);
-      }
-    }
-
-    @Override
-    public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
-      synchronized (mutex) {
-        return delegate().compute(key, remappingFunction);
-      }
-    }
-
-    @Override
-    public V merge(
-        K key, V value, BiFunction<? super V, ? super V, ? extends V> remappingFunction) {
-      synchronized (mutex) {
-        return delegate().merge(key, value, remappingFunction);
-      }
-    }
-
-    @Override
     public void putAll(Map<? extends K, ? extends V> map) {
       synchronized (mutex) {
         delegate().putAll(map);
@@ -1173,23 +1044,9 @@ final class Synchronized {
     }
 
     @Override
-    public void replaceAll(BiFunction<? super K, ? super V, ? extends V> function) {
-      synchronized (mutex) {
-        delegate().replaceAll(function);
-      }
-    }
-
-    @Override
     public V remove(Object key) {
       synchronized (mutex) {
         return delegate().remove(key);
-      }
-    }
-
-    @Override
-    public boolean remove(Object key, Object value) {
-      synchronized (mutex) {
-        return delegate().remove(key, value);
       }
     }
 
@@ -1973,191 +1830,5 @@ final class Synchronized {
     }
 
     private static final long serialVersionUID = 0;
-  }
-  
-  static <R, C, V> Table<R, C, V> table(Table<R, C, V> table, Object mutex) {
-    return new SynchronizedTable<R, C, V>(table, mutex);
-  }
-
-  private static final class SynchronizedTable<R, C, V> extends SynchronizedObject
-      implements Table<R, C, V> {
-
-    SynchronizedTable(Table<R, C, V> delegate, Object mutex) {
-      super(delegate, mutex);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    Table<R, C, V> delegate() {
-      return (Table<R, C, V>) super.delegate();
-    }
-
-    @Override
-    public boolean contains(@Nullable Object rowKey, @Nullable Object columnKey) {
-      synchronized (mutex) {
-        return delegate().contains(rowKey, columnKey);
-      }
-    }
-
-    @Override
-    public boolean containsRow(@Nullable Object rowKey) {
-      synchronized (mutex) {
-        return delegate().containsRow(rowKey);
-      }
-    }
-
-    @Override
-    public boolean containsColumn(@Nullable Object columnKey) {
-      synchronized (mutex) {
-        return delegate().containsColumn(columnKey);
-      }
-    }
-
-    @Override
-    public boolean containsValue(@Nullable Object value) {
-      synchronized (mutex) {
-        return delegate().containsValue(value);
-      }
-    }
-
-    @Override
-    public V get(@Nullable Object rowKey, @Nullable Object columnKey) {
-      synchronized (mutex) {
-        return delegate().get(rowKey, columnKey);
-      }
-    }
-
-    @Override
-    public boolean isEmpty() {
-      synchronized (mutex) {
-        return delegate().isEmpty();
-      }
-    }
-
-    @Override
-    public int size() {
-      synchronized (mutex) {
-        return delegate().size();
-      }
-    }
-
-    @Override
-    public void clear() {
-      synchronized (mutex) {
-        delegate().clear();
-      }
-    }
-
-    @Override
-    public V put(@Nullable R rowKey, @Nullable C columnKey, @Nullable V value) {
-      synchronized (mutex) {
-        return delegate().put(rowKey, columnKey, value);
-      }
-    }
-
-    @Override
-    public void putAll(Table<? extends R, ? extends C, ? extends V> table) {
-      synchronized (mutex) {
-        delegate().putAll(table);
-      }
-    }
-
-    @Override
-    public V remove(@Nullable Object rowKey, @Nullable Object columnKey) {
-      synchronized (mutex) {
-        return delegate().remove(rowKey, columnKey);
-      }
-    }
-
-    @Override
-    public Map<C, V> row(@Nullable R rowKey) {
-      synchronized (mutex) {
-        return map(delegate().row(rowKey), mutex);
-      }
-    }
-
-    @Override
-    public Map<R, V> column(@Nullable C columnKey) {
-      synchronized (mutex) {
-        return map(delegate().column(columnKey), mutex);
-      }
-    }
-
-    @Override
-    public Set<Cell<R, C, V>> cellSet() {
-      synchronized (mutex) {
-        return set(delegate().cellSet(), mutex);
-      }
-    }
-
-    @Override
-    public Set<R> rowKeySet() {
-      synchronized (mutex) {
-        return set(delegate().rowKeySet(), mutex);
-      }
-    }
-
-    @Override
-    public Set<C> columnKeySet() {
-      synchronized (mutex) {
-        return set(delegate().columnKeySet(), mutex);
-      }
-    }
-
-    @Override
-    public Collection<V> values() {
-      synchronized (mutex) {
-        return collection(delegate().values(), mutex);
-      }
-    }
-
-    @Override
-    public Map<R, Map<C, V>> rowMap() {
-      synchronized (mutex) {
-        return map(
-            Maps.transformValues(
-                delegate().rowMap(),
-                new com.google.common.base.Function<Map<C, V>, Map<C, V>>() {
-                  @Override
-                  public Map<C, V> apply(Map<C, V> t) {
-                    return map(t, mutex);
-                  }
-                }),
-            mutex);
-      }
-    }
-
-    @Override
-    public Map<C, Map<R, V>> columnMap() {
-      synchronized (mutex) {
-        return map(
-            Maps.transformValues(
-                delegate().columnMap(),
-                new com.google.common.base.Function<Map<R, V>, Map<R, V>>() {
-                  @Override
-                  public Map<R, V> apply(Map<R, V> t) {
-                    return map(t, mutex);
-                  }
-                }),
-            mutex);
-      }
-    }
-
-    @Override
-    public int hashCode() {
-      synchronized (mutex) {
-        return delegate().hashCode();
-      }
-    }
-
-    @Override
-    public boolean equals(@Nullable Object obj) {
-      if (this == obj) {
-        return true;
-      }
-      synchronized (mutex) {
-        return delegate().equals(obj);
-      }
-    }
   }
 }

@@ -16,10 +16,6 @@
 
 package com.google.common.collect.testing;
 
-import static com.google.common.collect.testing.testers.CollectionSpliteratorTester.getSpliteratorNotImmutableCollectionAllowsAddMethod;
-import static com.google.common.collect.testing.testers.CollectionSpliteratorTester.getSpliteratorNotImmutableCollectionAllowsRemoveMethod;
-import static java.util.Arrays.asList;
-
 import com.google.common.annotations.GwtIncompatible;
 import com.google.common.collect.testing.features.CollectionFeature;
 import com.google.common.collect.testing.features.CollectionSize;
@@ -34,7 +30,6 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-import java.util.NavigableSet;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -58,20 +53,15 @@ public class TestsForSetsInJavaUtil {
 
   public Test allTests() {
     TestSuite suite = new TestSuite("java.util Sets");
-    suite.addTest(testsForCheckedNavigableSet());
     suite.addTest(testsForEmptySet());
-    suite.addTest(testsForEmptyNavigableSet());
-    suite.addTest(testsForEmptySortedSet());
     suite.addTest(testsForSingletonSet());
     suite.addTest(testsForHashSet());
     suite.addTest(testsForLinkedHashSet());
     suite.addTest(testsForEnumSet());
-    suite.addTest(testsForSynchronizedNavigableSet());
     suite.addTest(testsForTreeSetNatural());
     suite.addTest(testsForTreeSetWithComparator());
     suite.addTest(testsForCopyOnWriteArraySet());
     suite.addTest(testsForUnmodifiableSet());
-    suite.addTest(testsForUnmodifiableNavigableSet());
     suite.addTest(testsForCheckedSet());
     suite.addTest(testsForCheckedSortedSet());
     suite.addTest(testsForAbstractSet());
@@ -82,19 +72,7 @@ public class TestsForSetsInJavaUtil {
     return suite;
   }
 
-  protected Collection<Method> suppressForCheckedNavigableSet() {
-    return Collections.emptySet();
-  }
-
   protected Collection<Method> suppressForEmptySet() {
-    return Collections.emptySet();
-  }
-
-  protected Collection<Method> suppressForEmptyNavigableSet() {
-    return Collections.emptySet();
-  }
-
-  protected Collection<Method> suppressForEmptySortedSet() {
     return Collections.emptySet();
   }
 
@@ -114,10 +92,6 @@ public class TestsForSetsInJavaUtil {
     return Collections.emptySet();
   }
 
-  protected Collection<Method> suppressForSynchronizedNavigableSet() {
-    return Collections.emptySet();
-  }
-
   protected Collection<Method> suppressForTreeSetNatural() {
     return Collections.emptySet();
   }
@@ -127,16 +101,10 @@ public class TestsForSetsInJavaUtil {
   }
 
   protected Collection<Method> suppressForCopyOnWriteArraySet() {
-    return asList(
-        getSpliteratorNotImmutableCollectionAllowsAddMethod(),
-        getSpliteratorNotImmutableCollectionAllowsRemoveMethod());
-  }
-
-  protected Collection<Method> suppressForUnmodifiableSet() {
     return Collections.emptySet();
   }
 
-  protected Collection<Method> suppressForUnmodifiableNavigableSet() {
+  protected Collection<Method> suppressForUnmodifiableSet() {
     return Collections.emptySet();
   }
 
@@ -159,28 +127,6 @@ public class TestsForSetsInJavaUtil {
     return Collections.emptySet();
   }
 
-  public Test testsForCheckedNavigableSet() {
-    return SortedSetTestSuiteBuilder.using(
-        new TestStringSortedSetGenerator() {
-          @Override
-          public NavigableSet<String> create(String[] elements) {
-            NavigableSet<String> innerSet = new TreeSet<String>();
-            Collections.addAll(innerSet, elements);
-            return Collections.checkedNavigableSet(innerSet, String.class);
-          }
-        })
-        .named("checkedNavigableSet/TreeSet, natural")
-        .withFeatures(
-            SetFeature.GENERAL_PURPOSE,
-            CollectionFeature.KNOWN_ORDER,
-            CollectionFeature.SERIALIZABLE,
-            CollectionFeature.FAILS_FAST_ON_CONCURRENT_MODIFICATION,
-            CollectionFeature.RESTRICTS_ELEMENTS,
-            CollectionSize.ANY)
-        .suppressing(suppressForCheckedNavigableSet())
-        .createTestSuite();
-  }
-
   public Test testsForEmptySet() {
     return SetTestSuiteBuilder.using(
             new TestStringSetGenerator() {
@@ -192,34 +138,6 @@ public class TestsForSetsInJavaUtil {
         .named("emptySet")
         .withFeatures(CollectionFeature.SERIALIZABLE, CollectionSize.ZERO)
         .suppressing(suppressForEmptySet())
-        .createTestSuite();
-  }
-
-  public Test testsForEmptyNavigableSet() {
-    return SetTestSuiteBuilder.using(
-        new TestStringSortedSetGenerator() {
-          @Override
-          public NavigableSet<String> create(String[] elements) {
-            return Collections.emptyNavigableSet();
-          }
-        })
-        .named("emptyNavigableSet")
-        .withFeatures(CollectionFeature.SERIALIZABLE, CollectionSize.ZERO)
-        .suppressing(suppressForEmptyNavigableSet())
-        .createTestSuite();
-  }
-
-  public Test testsForEmptySortedSet() {
-    return SetTestSuiteBuilder.using(
-        new TestStringSortedSetGenerator() {
-          @Override
-          public SortedSet<String> create(String[] elements) {
-            return Collections.emptySortedSet();
-          }
-        })
-        .named("emptySortedSet")
-        .withFeatures(CollectionFeature.SERIALIZABLE, CollectionSize.ZERO)
-        .suppressing(suppressForEmptySortedSet())
         .createTestSuite();
   }
 
@@ -300,31 +218,6 @@ public class TestsForSetsInJavaUtil {
         .createTestSuite();
   }
 
-  /**
-   * Tests regular NavigableSet behavior of synchronizedNavigableSet(treeSet);
-   * does not test the fact that it's synchronized.
-   */
-  public Test testsForSynchronizedNavigableSet() {
-    return NavigableSetTestSuiteBuilder.using(
-            new TestStringSortedSetGenerator() {
-              @Override
-              public SortedSet<String> create(String[] elements) {
-                NavigableSet<String> delegate = new TreeSet<>(MinimalCollection.of(elements));
-                return Collections.synchronizedNavigableSet(delegate);
-              }
-            })
-        .named("synchronizedNavigableSet/TreeSet, natural")
-        .withFeatures(
-            SetFeature.GENERAL_PURPOSE,
-            CollectionFeature.SERIALIZABLE,
-            CollectionFeature.KNOWN_ORDER,
-            CollectionFeature.FAILS_FAST_ON_CONCURRENT_MODIFICATION,
-            CollectionSize.ANY)
-        .suppressing(suppressForSynchronizedNavigableSet())
-        .createTestSuite();
-
-  }
-
   public Test testsForTreeSetNatural() {
     return NavigableSetTestSuiteBuilder.using(
             new TestStringSortedSetGenerator() {
@@ -403,26 +296,6 @@ public class TestsForSetsInJavaUtil {
             CollectionFeature.ALLOWS_NULL_VALUES,
             CollectionSize.ANY)
         .suppressing(suppressForUnmodifiableSet())
-        .createTestSuite();
-  }
-
-  public Test testsForUnmodifiableNavigableSet() {
-    return SetTestSuiteBuilder.using(
-        new TestStringSortedSetGenerator() {
-          @Override
-          public NavigableSet<String> create(String[] elements) {
-            NavigableSet<String> innerSet = new TreeSet<String>();
-            Collections.addAll(innerSet, elements);
-            return Collections.unmodifiableNavigableSet(innerSet);
-          }
-        })
-        .named("unmodifiableNavigableSet/TreeSet, natural")
-        .withFeatures(
-            CollectionFeature.KNOWN_ORDER,
-            CollectionFeature.RESTRICTS_ELEMENTS,
-            CollectionFeature.SERIALIZABLE,
-            CollectionSize.ANY)
-        .suppressing(suppressForUnmodifiableNavigableSet())
         .createTestSuite();
   }
 

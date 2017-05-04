@@ -83,7 +83,10 @@ public final class Shorts {
    */
   public static short checkedCast(long value) {
     short result = (short) value;
-    checkArgument(result == value, "Out of range: %s", value);
+    if (result != value) {
+      // don't use checkArgument here, to avoid boxing
+      throw new IllegalArgumentException("Out of range: " + value);
+    }
     return result;
   }
 
@@ -247,25 +250,6 @@ public final class Shorts {
       }
     }
     return max;
-  }
-
-  /**
-   * Returns the value nearest to {@code value} which is within the closed range {@code [min..max]}.
-   *
-   * <p>If {@code value} is within the range {@code [min..max]}, {@code value} is returned
-   * unchanged. If {@code value} is less than {@code min}, {@code min} is returned, and if
-   * {@code value} is greater than {@code max}, {@code max} is returned.
-   *
-   * @param value the {@code short} value to constrain
-   * @param min the lower bound (inclusive) of the range to constrain {@code value} to
-   * @param max the upper bound (inclusive) of the range to constrain {@code value} to
-   * @throws IllegalArgumentException if {@code min > max}
-   * @since 21.0
-   */
-  @Beta
-  public static short constrainToRange(short value, short min, short max) {
-    checkArgument(min <= max, "min (%s) must be less than or equal to max (%s)", min, max);
-    return value < min ? min : value < max ? value : max;
   }
 
   /**
@@ -624,7 +608,11 @@ public final class Shorts {
     }
 
     short[] toShortArray() {
-      return Arrays.copyOfRange(array, start, end);
+      // Arrays.copyOfRange() is not available under GWT
+      int size = size();
+      short[] result = new short[size];
+      System.arraycopy(array, start, result, 0, size);
+      return result;
     }
 
     private static final long serialVersionUID = 0;

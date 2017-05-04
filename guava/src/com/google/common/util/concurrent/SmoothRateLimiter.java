@@ -141,14 +141,13 @@ abstract class SmoothRateLimiter extends RateLimiter {
   /**
    * This implements the following function where coldInterval = coldFactor * stableInterval.
    *
-   * <pre>
    *          ^ throttling
    *          |
    *    cold  +                  /
    * interval |                 /.
    *          |                / .
-   *          |               /  .   ← "warmup period" is the area of the trapezoid between
-   *          |              /   .     thresholdPermits and maxPermits
+   *          |               /  .   <-- "warmup period" is the area of the trapezoid between
+   *          |              /   .       thresholdPermits and maxPermits
    *          |             /    .
    *          |            /     .
    *          |           /      .
@@ -156,52 +155,42 @@ abstract class SmoothRateLimiter extends RateLimiter {
    * interval |          .   UP  .
    *          |          . PERIOD.
    *          |          .       .
-   *        0 +----------+-------+--------------→ storedPermits
+   *        0 +----------+-------+--------------> storedPermits
    *          0 thresholdPermits maxPermits
-   * </pre>
-   *
    * Before going into the details of this particular function, let's keep in mind the basics:
+   * 1) The state of the RateLimiter (storedPermits) is a vertical line in this figure.
+   * 2) When the RateLimiter is not used, this goes right (up to maxPermits)
+   * 3) When the RateLimiter is used, this goes left (down to zero), since if we have storedPermits,
+   *    we serve from those first
+   * 4) When _unused_, we go right at a constant rate! The rate at which we move to
+   *    the right is chosen as maxPermits / warmupPeriod.  This ensures that the time it takes to
+   *    go from 0 to maxPermits is equal to warmupPeriod.
+   * 5) When _used_, the time it takes, as explained in the introductory class note, is
+   *    equal to the integral of our function, between X permits and X-K permits, assuming
+   *    we want to spend K saved permits.
    *
-   * <ol>
-   *   <li>The state of the RateLimiter (storedPermits) is a vertical line in this figure.
-   *   <li>When the RateLimiter is not used, this goes right (up to maxPermits)
-   *   <li>When the RateLimiter is used, this goes left (down to zero), since if we have
-   *       storedPermits, we serve from those first
-   *   <li>When _unused_, we go right at a constant rate! The rate at which we move to the right is
-   *       chosen as maxPermits / warmupPeriod. This ensures that the time it takes to go from 0 to
-   *       maxPermits is equal to warmupPeriod.
-   *   <li>When _used_, the time it takes, as explained in the introductory class note, is equal to
-   *       the integral of our function, between X permits and X-K permits, assuming we want to
-   *       spend K saved permits.
-   * </ol>
+   *    In summary, the time it takes to move to the left (spend K permits), is equal to the
+   *    area of the function of width == K.
    *
-   * <p>In summary, the time it takes to move to the left (spend K permits), is equal to the area of
-   * the function of width == K.
+   *    Assuming we have saturated demand, the time to go from maxPermits to thresholdPermits is
+   *    equal to warmupPeriod.  And the time to go from thresholdPermits to 0 is
+   *    warmupPeriod/2.  (The reason that this is warmupPeriod/2 is to maintain the behavior of
+   *    the original implementation where coldFactor was hard coded as 3.)
    *
-   * <p>Assuming we have saturated demand, the time to go from maxPermits to thresholdPermits is
-   * equal to warmupPeriod. And the time to go from thresholdPermits to 0 is warmupPeriod/2. (The
-   * reason that this is warmupPeriod/2 is to maintain the behavior of the original implementation
-   * where coldFactor was hard coded as 3.)
+   * It remains to calculate thresholdsPermits and maxPermits.
    *
-   * <p>It remains to calculate thresholdsPermits and maxPermits.
+   *  - The time to go from thresholdPermits to 0 is equal to the integral of the function between
+   *    0 and thresholdPermits.  This is thresholdPermits * stableIntervals.  By (5) it is also
+   *    equal to warmupPeriod/2.  Therefore
    *
-   * <ul>
-   *   <li>The time to go from thresholdPermits to 0 is equal to the integral of the function
-   *       between 0 and thresholdPermits. This is thresholdPermits * stableIntervals. By (5) it is
-   *       also equal to warmupPeriod/2. Therefore
-   *       <blockquote>
-   *       thresholdPermits = 0.5 * warmupPeriod / stableInterval
-   *       </blockquote>
+   *        thresholdPermits = 0.5 * warmupPeriod / stableInterval.
    *
-   *   <li>The time to go from maxPermits to thresholdPermits is equal to the integral of the
-   *       function between thresholdPermits and maxPermits. This is the area of the pictured
-   *       trapezoid, and it is equal to 0.5 * (stableInterval + coldInterval) * (maxPermits -
-   *       thresholdPermits). It is also equal to warmupPeriod, so
-   *       <blockquote>
-   *       maxPermits = thresholdPermits + 2 * warmupPeriod / (stableInterval + coldInterval)
-   *       </blockquote>
+   * - The time to go from maxPermits to thresholdPermits is equal to the integral of the function
+   *    between thresholdPermits and maxPermits.  This is the area of the pictured trapezoid, and it
+   *    is equal to 0.5 * (stableInterval + coldInterval) * (maxPermits - thresholdPermits).  It is
+   *    also equal to warmupPeriod, so
    *
-   * </ul>
+   *        maxPermits = thresholdPermits + 2 * warmupPeriod / (stableInterval + coldInterval).
    */
   static final class SmoothWarmingUp extends SmoothRateLimiter {
     private final long warmupPeriodMicros;
@@ -248,7 +237,7 @@ abstract class SmoothRateLimiter extends RateLimiter {
         double permitsAboveThresholdToTake = min(availablePermitsAboveThreshold, permitsToTake);
         // TODO(cpovirk): Figure out a good name for this variable.
         double length = permitsToTime(availablePermitsAboveThreshold)
-                + permitsToTime(availablePermitsAboveThreshold - permitsAboveThresholdToTake);
+            + permitsToTime(availablePermitsAboveThreshold - permitsAboveThresholdToTake);
         micros = (long) (permitsAboveThresholdToTake * length / 2.0);
         permitsToTake -= permitsAboveThresholdToTake;
       }

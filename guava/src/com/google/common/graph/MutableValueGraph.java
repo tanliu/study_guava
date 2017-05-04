@@ -67,7 +67,7 @@ public interface MutableValueGraph<N, V> extends ValueGraph<N, V> {
    * @return {@code true} if the graph was modified as a result of this call
    */
   @CanIgnoreReturnValue
-  boolean removeNode(N node);
+  boolean removeNode(Object node);
 
   /**
    * Removes the edge connecting {@code nodeU} to {@code nodeV}, if it is present.
@@ -76,5 +76,5 @@ public interface MutableValueGraph<N, V> extends ValueGraph<N, V> {
    *     nodeV}, or null if there was no such edge.
    */
   @CanIgnoreReturnValue
-  V removeEdge(N nodeU, N nodeV);
+  V removeEdge(Object nodeU, Object nodeV);
 }

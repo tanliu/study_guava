@@ -93,11 +93,6 @@ public void testEnsureCapacity_fail() throws Exception {
   testCase.testEnsureCapacity_fail();
 }
 
-public void testFalseFirst() throws Exception {
-  com.google.common.primitives.BooleansTest testCase = new com.google.common.primitives.BooleansTest();
-  testCase.testFalseFirst();
-}
-
 public void testHashCode() throws Exception {
   com.google.common.primitives.BooleansTest testCase = new com.google.common.primitives.BooleansTest();
   testCase.testHashCode();
@@ -141,10 +136,5 @@ public void testToArray_threadSafe() throws Exception {
 public void testToArray_withNull() throws Exception {
   com.google.common.primitives.BooleansTest testCase = new com.google.common.primitives.BooleansTest();
   testCase.testToArray_withNull();
-}
-
-public void testTrueFirst() throws Exception {
-  com.google.common.primitives.BooleansTest testCase = new com.google.common.primitives.BooleansTest();
-  testCase.testTrueFirst();
 }
 }

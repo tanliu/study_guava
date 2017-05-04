@@ -23,7 +23,6 @@ import java.util.AbstractCollection;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.Spliterator;
 import javax.annotation.Nullable;
 
 /**
@@ -34,8 +33,6 @@ import javax.annotation.Nullable;
 @SuppressWarnings("serial") // we're overriding default serialization
 public abstract class ImmutableCollection<E> extends AbstractCollection<E>
     implements Serializable {
-  static final int SPLITERATOR_CHARACTERISTICS =
-      Spliterator.IMMUTABLE | Spliterator.NONNULL | Spliterator.ORDERED;
 
   static final ImmutableCollection<Object> EMPTY_IMMUTABLE_COLLECTION
       = new ForwardingImmutableCollection<Object>(Collections.emptyList());

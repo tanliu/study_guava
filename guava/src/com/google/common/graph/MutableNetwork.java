@@ -70,7 +70,7 @@ public interface MutableNetwork<N, E> extends Network<N, E> {
    * @return {@code true} if the network was modified as a result of this call
    */
   @CanIgnoreReturnValue
-  boolean removeNode(N node);
+  boolean removeNode(Object node);
 
   /**
    * Removes {@code edge} from this network, if it is present.
@@ -78,5 +78,5 @@ public interface MutableNetwork<N, E> extends Network<N, E> {
    * @return {@code true} if the network was modified as a result of this call
    */
   @CanIgnoreReturnValue
-  boolean removeEdge(E edge);
+  boolean removeEdge(Object edge);
 }

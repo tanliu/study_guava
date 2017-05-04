@@ -26,7 +26,6 @@ import com.google.common.annotations.GwtCompatible;
  * @since 10.0
  */
 @Beta
-@FunctionalInterface
 @GwtCompatible
 public interface TearDown {
   /**

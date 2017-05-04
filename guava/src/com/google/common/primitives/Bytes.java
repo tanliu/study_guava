@@ -362,7 +362,11 @@ public final class Bytes {
     }
 
     byte[] toByteArray() {
-      return Arrays.copyOfRange(array, start, end);
+      // Arrays.copyOfRange() is not available under GWT
+      int size = size();
+      byte[] result = new byte[size];
+      System.arraycopy(array, start, result, 0, size);
+      return result;
     }
 
     private static final long serialVersionUID = 0;

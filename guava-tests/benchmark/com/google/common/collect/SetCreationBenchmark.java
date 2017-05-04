@@ -37,7 +37,7 @@ public class SetCreationBenchmark {
   @Param("1234")
   private SpecialRandom random;
 
-  @Param({"ImmutableSetImpl", "HashSetImpl"})
+  @Param({"Immutable", "Hash"})
   private SetImpl impl;
 
   // the following must be set during setUp

@@ -25,10 +25,9 @@ import javax.annotation.Nullable;
  * other {@code Future}, be {@linkplain #cancel cancelled}.
  *
  * <p>{@code SettableFuture} is the recommended {@code ListenableFuture} implementation when your
- * task cannot be implemented with {@link ListeningExecutorService}, the various {@link Futures}
- * utility methods, or {@link ListenableFutureTask}. Those APIs have less opportunity for developer
- * error. If your needs are more complex than {@code SettableFuture} supports, use
- * {@link AbstractFuture}, which offers an extensible version of the API.
+ * task is not a good fit for a {@link ListeningExecutorService} task. If your needs are more
+ * complex than {@code SettableFuture} supports, use {@link AbstractFuture}, which offers an
+ * extensible version of the API.
  *
  * @author Sven Mawson
  * @since 9.0 (in 1.0 as {@code ValueFuture})

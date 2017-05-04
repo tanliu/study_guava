@@ -548,14 +548,9 @@ public void testToString() throws Exception {
   testCase.testToString();
 }
 
-public void testTransform_forEach() throws Exception {
+public void testTransform() throws Exception {
   com.google.common.collect.IterablesTest testCase = new com.google.common.collect.IterablesTest();
-  testCase.testTransform_forEach();
-}
-
-public void testTransform_iterator() throws Exception {
-  com.google.common.collect.IterablesTest testCase = new com.google.common.collect.IterablesTest();
-  testCase.testTransform_iterator();
+  testCase.testTransform();
 }
 
 public void testTryFind() throws Exception {
@@ -571,11 +566,6 @@ public void testUnmodifiableIterable() throws Exception {
 public void testUnmodifiableIterableShortCircuit() throws Exception {
   com.google.common.collect.IterablesTest testCase = new com.google.common.collect.IterablesTest();
   testCase.testUnmodifiableIterableShortCircuit();
-}
-
-public void testUnmodifiableIterable_forEach() throws Exception {
-  com.google.common.collect.IterablesTest testCase = new com.google.common.collect.IterablesTest();
-  testCase.testUnmodifiableIterable_forEach();
 }
 
 public void test_contains_nonnull_iterable_no() throws Exception {

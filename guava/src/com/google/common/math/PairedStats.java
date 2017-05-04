@@ -50,11 +50,10 @@ public final class PairedStats implements Serializable {
    *
    * <p>To ensure that the created instance obeys its contract, the parameters should satisfy the
    * following constraints. This is the callers responsibility and is not enforced here.
-   *
    * <ul>
-   *   <li>Both {@code xStats} and {@code yStats} must have the same {@code count}.
-   *   <li>If that {@code count} is 1, {@code sumOfProductsOfDeltas} must be exactly 0.0.
-   *   <li>If that {@code count} is more than 1, {@code sumOfProductsOfDeltas} must be finite.
+   * <li>Both {@code xStats} and {@code yStats} must have the same {@count}.
+   * <li>If that {@code count} is 1, {@code sumOfProductsOfDeltas} must be exactly 0.0.
+   * <li>If that {@code count} is more than 1, {@code sumOfProductsOfDeltas} must be finite.
    * </ul>
    */
   PairedStats(Stats xStats, Stats yStats, double sumOfProductsOfDeltas) {
@@ -279,7 +278,7 @@ public final class PairedStats implements Serializable {
   // Serialization helpers
 
   /**
-   * The size of byte array representation in bytes.
+   * The size of byte array representaion in bytes.
    */
   private static final int BYTES = Stats.BYTES * 2 + Double.SIZE / Byte.SIZE;
 

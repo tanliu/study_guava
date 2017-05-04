@@ -65,6 +65,8 @@ public class CollectionIteratorTester<E> extends AbstractCollectionTester<E> {
     assertEquals("Different ordered iteration", expected, iteratorElements);
   }
 
+  // TODO: switch to DerivedIteratorTestSuiteBuilder
+
   @CollectionFeature.Require(SUPPORTS_ITERATOR_REMOVE)
   @CollectionSize.Require(absent = ZERO)
   public void testIterator_removeAffectsBackingCollection() {

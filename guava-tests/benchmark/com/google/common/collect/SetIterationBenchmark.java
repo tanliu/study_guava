@@ -38,7 +38,7 @@ public class SetIterationBenchmark {
   @Param("1234")
   private SpecialRandom random;
 
-  @Param({"ImmutableSetImpl", "HashSetImpl"})
+  @Param({"Immutable", "Hash"})
   private SetImpl impl;
 
   // the following must be set during setUp
@@ -47,7 +47,7 @@ public class SetIterationBenchmark {
   @BeforeExperiment void setUp() {
     CollectionBenchmarkSampleData sampleData =
         new CollectionBenchmarkSampleData(true, random, 0.8, size);
-    setToTest = (Set<Element>) impl.create(sampleData.getValuesInSet());
+    setToTest = impl.create(sampleData.getValuesInSet());
   }
 
   @Benchmark int iteration(int reps) {

@@ -494,7 +494,7 @@ public class MapsTest extends TestCase {
   }
 
   private static final SortedMap<Integer, Integer> SORTED_EMPTY = Maps.newTreeMap();
-  private static final ImmutableSortedMap<Integer, Integer> SORTED_SINGLETON =
+  private static final SortedMap<Integer, Integer> SORTED_SINGLETON =
       ImmutableSortedMap.of(1, 2);
 
   public void testMapDifferenceOfSortedMapIsSorted() {
@@ -983,7 +983,7 @@ public class MapsTest extends TestCase {
     }
   }
 
-  private static final ImmutableBiMap<Integer, String> INT_TO_STRING_MAP =
+  private static final BiMap<Integer, String> INT_TO_STRING_MAP =
       new ImmutableBiMap.Builder<Integer, String>()
           .put(1, "one")
           .put(2, "two")

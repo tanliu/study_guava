@@ -26,11 +26,14 @@ import static com.google.common.util.concurrent.Service.State.TERMINATED;
 
 import com.google.common.annotations.Beta;
 import com.google.common.annotations.GwtIncompatible;
+import com.google.common.util.concurrent.ListenerCallQueue.Callback;
 import com.google.common.util.concurrent.Monitor.Guard;
 import com.google.common.util.concurrent.Service.State; // javadoc needs this
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.errorprone.annotations.ForOverride;
 import com.google.j2objc.annotations.WeakOuter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -51,66 +54,45 @@ import javax.annotation.concurrent.Immutable;
 @Beta
 @GwtIncompatible
 public abstract class AbstractService implements Service {
-  private static final ListenerCallQueue.Event<Listener> STARTING_EVENT =
-      new ListenerCallQueue.Event<Listener>() {
+  private static final Callback<Listener> STARTING_CALLBACK =
+      new Callback<Listener>("starting()") {
         @Override
-        public void call(Listener listener) {
+        void call(Listener listener) {
           listener.starting();
         }
-
-        @Override
-        public String toString() {
-          return "starting()";
-        }
       };
-  private static final ListenerCallQueue.Event<Listener> RUNNING_EVENT =
-      new ListenerCallQueue.Event<Listener>() {
+  private static final Callback<Listener> RUNNING_CALLBACK =
+      new Callback<Listener>("running()") {
         @Override
-        public void call(Listener listener) {
+        void call(Listener listener) {
           listener.running();
         }
-
-        @Override
-        public String toString() {
-          return "running()";
-        }
       };
-  private static final ListenerCallQueue.Event<Listener> STOPPING_FROM_STARTING_EVENT =
-      stoppingEvent(STARTING);
-  private static final ListenerCallQueue.Event<Listener> STOPPING_FROM_RUNNING_EVENT =
-      stoppingEvent(RUNNING);
+  private static final Callback<Listener> STOPPING_FROM_STARTING_CALLBACK =
+      stoppingCallback(STARTING);
+  private static final Callback<Listener> STOPPING_FROM_RUNNING_CALLBACK =
+      stoppingCallback(RUNNING);
 
-  private static final ListenerCallQueue.Event<Listener> TERMINATED_FROM_NEW_EVENT =
-      terminatedEvent(NEW);
-  private static final ListenerCallQueue.Event<Listener> TERMINATED_FROM_RUNNING_EVENT =
-      terminatedEvent(RUNNING);
-  private static final ListenerCallQueue.Event<Listener> TERMINATED_FROM_STOPPING_EVENT =
-      terminatedEvent(STOPPING);
+  private static final Callback<Listener> TERMINATED_FROM_NEW_CALLBACK = terminatedCallback(NEW);
+  private static final Callback<Listener> TERMINATED_FROM_RUNNING_CALLBACK =
+      terminatedCallback(RUNNING);
+  private static final Callback<Listener> TERMINATED_FROM_STOPPING_CALLBACK =
+      terminatedCallback(STOPPING);
 
-  private static ListenerCallQueue.Event<Listener> terminatedEvent(final State from) {
-    return new ListenerCallQueue.Event<Listener>() {
+  private static Callback<Listener> terminatedCallback(final State from) {
+    return new Callback<Listener>("terminated({from = " + from + "})") {
       @Override
-      public void call(Listener listener) {
+      void call(Listener listener) {
         listener.terminated(from);
-      }
-
-      @Override
-      public String toString() {
-        return "terminated({from = " + from + "})";
       }
     };
   }
 
-  private static ListenerCallQueue.Event<Listener> stoppingEvent(final State from) {
-    return new ListenerCallQueue.Event<Listener>() {
+  private static Callback<Listener> stoppingCallback(final State from) {
+    return new Callback<Listener>("stopping({from = " + from + "})") {
       @Override
-      public void call(Listener listener) {
+      void call(Listener listener) {
         listener.stopping(from);
-      }
-
-      @Override
-      public String toString() {
-        return "stopping({from = " + from + "})";
       }
     };
   }
@@ -173,8 +155,12 @@ public abstract class AbstractService implements Service {
     }
   }
 
-  /** The listeners to notify during a state transition. */
-  private final ListenerCallQueue<Listener> listeners = new ListenerCallQueue<>();
+  /**
+   * The listeners to notify during a state transition.
+   */
+  @GuardedBy("monitor")
+  private final List<ListenerCallQueue<Listener>> listeners =
+      Collections.synchronizedList(new ArrayList<ListenerCallQueue<Listener>>());
 
   /**
    * The current state of the service. This should be written with the lock held but can be read
@@ -185,6 +171,7 @@ public abstract class AbstractService implements Service {
    * <p>To update this field correctly the lock must be held to guarantee that the state is
    * consistent.
    */
+  @GuardedBy("monitor")
   private volatile StateSnapshot snapshot = new StateSnapshot(NEW);
 
   /** Constructor for use by subclasses. */
@@ -200,7 +187,6 @@ public abstract class AbstractService implements Service {
    * convenient. It is invoked exactly once on service startup, even when {@link #startAsync} is
    * called multiple times.
    */
-  @ForOverride
   protected abstract void doStart();
 
   /**
@@ -213,7 +199,6 @@ public abstract class AbstractService implements Service {
    * convenient. It is invoked exactly once on service shutdown, even when {@link #stopAsync} is
    * called multiple times.
    */
-  @ForOverride
   protected abstract void doStop();
 
   @CanIgnoreReturnValue
@@ -222,13 +207,13 @@ public abstract class AbstractService implements Service {
     if (monitor.enterIf(isStartable)) {
       try {
         snapshot = new StateSnapshot(STARTING);
-        enqueueStartingEvent();
+        starting();
         doStart();
       } catch (Throwable startupFailure) {
         notifyFailed(startupFailure);
       } finally {
         monitor.leave();
-        dispatchListenerEvents();
+        executeListeners();
       }
     } else {
       throw new IllegalStateException("Service " + this + " has already been started");
@@ -245,15 +230,15 @@ public abstract class AbstractService implements Service {
         switch (previous) {
           case NEW:
             snapshot = new StateSnapshot(TERMINATED);
-            enqueueTerminatedEvent(NEW);
+            terminated(NEW);
             break;
           case STARTING:
             snapshot = new StateSnapshot(STARTING, true, null);
-            enqueueStoppingEvent(STARTING);
+            stopping(STARTING);
             break;
           case RUNNING:
             snapshot = new StateSnapshot(STOPPING);
-            enqueueStoppingEvent(RUNNING);
+            stopping(RUNNING);
             doStop();
             break;
           case STOPPING:
@@ -268,7 +253,7 @@ public abstract class AbstractService implements Service {
         notifyFailed(shutdownFailure);
       } finally {
         monitor.leave();
-        dispatchListenerEvents();
+        executeListeners();
       }
     }
     return this;
@@ -375,11 +360,11 @@ public abstract class AbstractService implements Service {
         doStop();
       } else {
         snapshot = new StateSnapshot(RUNNING);
-        enqueueRunningEvent();
+        running();
       }
     } finally {
       monitor.leave();
-      dispatchListenerEvents();
+      executeListeners();
     }
   }
 
@@ -403,10 +388,10 @@ public abstract class AbstractService implements Service {
         throw failure;
       }
       snapshot = new StateSnapshot(TERMINATED);
-      enqueueTerminatedEvent(previous);
+      terminated(previous);
     } finally {
       monitor.leave();
-      dispatchListenerEvents();
+      executeListeners();
     }
   }
 
@@ -429,7 +414,7 @@ public abstract class AbstractService implements Service {
         case STARTING:
         case STOPPING:
           snapshot = new StateSnapshot(FAILED, false, cause);
-          enqueueFailedEvent(previous, cause);
+          failed(previous, cause);
           break;
         case FAILED:
           // Do nothing
@@ -439,7 +424,7 @@ public abstract class AbstractService implements Service {
       }
     } finally {
       monitor.leave();
-      dispatchListenerEvents();
+      executeListeners();
     }
   }
 
@@ -466,7 +451,16 @@ public abstract class AbstractService implements Service {
    */
   @Override
   public final void addListener(Listener listener, Executor executor) {
-    listeners.addListener(listener, executor);
+    checkNotNull(listener, "listener");
+    checkNotNull(executor, "executor");
+    monitor.enter();
+    try {
+      if (!state().isTerminal()) {
+        listeners.add(new ListenerCallQueue<Listener>(listener, executor));
+      }
+    } finally {
+      monitor.leave();
+    }
   }
 
   @Override
@@ -475,43 +469,50 @@ public abstract class AbstractService implements Service {
   }
 
   /**
-   * Attempts to execute all the listeners in {@link #listeners} while not holding the {@link
-   * #monitor}.
+   * Attempts to execute all the listeners in {@link #listeners} while not holding the
+   * {@link #monitor}.
    */
-  private void dispatchListenerEvents() {
+  private void executeListeners() {
     if (!monitor.isOccupiedByCurrentThread()) {
-      listeners.dispatch();
+      // iterate by index to avoid concurrent modification exceptions
+      for (int i = 0; i < listeners.size(); i++) {
+        listeners.get(i).execute();
+      }
     }
   }
 
-  private void enqueueStartingEvent() {
-    listeners.enqueue(STARTING_EVENT);
+  @GuardedBy("monitor")
+  private void starting() {
+    STARTING_CALLBACK.enqueueOn(listeners);
   }
 
-  private void enqueueRunningEvent() {
-    listeners.enqueue(RUNNING_EVENT);
+  @GuardedBy("monitor")
+  private void running() {
+    RUNNING_CALLBACK.enqueueOn(listeners);
   }
 
-  private void enqueueStoppingEvent(final State from) {
+  @GuardedBy("monitor")
+  private void stopping(final State from) {
     if (from == State.STARTING) {
-      listeners.enqueue(STOPPING_FROM_STARTING_EVENT);
+      STOPPING_FROM_STARTING_CALLBACK.enqueueOn(listeners);
     } else if (from == State.RUNNING) {
-      listeners.enqueue(STOPPING_FROM_RUNNING_EVENT);
+      STOPPING_FROM_RUNNING_CALLBACK.enqueueOn(listeners);
     } else {
       throw new AssertionError();
     }
   }
 
-  private void enqueueTerminatedEvent(final State from) {
+  @GuardedBy("monitor")
+  private void terminated(final State from) {
     switch (from) {
       case NEW:
-        listeners.enqueue(TERMINATED_FROM_NEW_EVENT);
+        TERMINATED_FROM_NEW_CALLBACK.enqueueOn(listeners);
         break;
       case RUNNING:
-        listeners.enqueue(TERMINATED_FROM_RUNNING_EVENT);
+        TERMINATED_FROM_RUNNING_CALLBACK.enqueueOn(listeners);
         break;
       case STOPPING:
-        listeners.enqueue(TERMINATED_FROM_STOPPING_EVENT);
+        TERMINATED_FROM_STOPPING_CALLBACK.enqueueOn(listeners);
         break;
       case STARTING:
       case TERMINATED:
@@ -521,20 +522,15 @@ public abstract class AbstractService implements Service {
     }
   }
 
-  private void enqueueFailedEvent(final State from, final Throwable cause) {
+  @GuardedBy("monitor")
+  private void failed(final State from, final Throwable cause) {
     // can't memoize this one due to the exception
-    listeners.enqueue(
-        new ListenerCallQueue.Event<Listener>() {
-          @Override
-          public void call(Listener listener) {
-            listener.failed(from, cause);
-          }
-
-          @Override
-          public String toString() {
-            return "failed({from = " + from + ", cause = " + cause + "})";
-          }
-        });
+    new Callback<Listener>("failed({from = " + from + ", cause = " + cause + "})") {
+      @Override
+      void call(Listener listener) {
+        listener.failed(from, cause);
+      }
+    }.enqueueOn(listeners);
   }
 
   /**

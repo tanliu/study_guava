@@ -30,7 +30,6 @@ import com.google.errorprone.annotations.concurrent.LazyInit;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -102,30 +101,6 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
       }
     }
     return new ImmutableRangeSet<C>(ImmutableList.copyOf(rangeSet.asRanges()));
-  }
-
-  /**
-   * Returns an {@code ImmutableRangeSet} representing the union of the specified ranges.
-   *
-   * <p>This is the smallest {@code RangeSet} which encloses each of the specified ranges. Duplicate
-   * or connected ranges are permitted, and will be coalesced in the result.
-   *
-   * @since 21.0
-   */
-  public static <C extends Comparable<?>> ImmutableRangeSet<C> unionOf(Iterable<Range<C>> ranges) {
-    return copyOf(TreeRangeSet.create(ranges));
-  }
-
-  /**
-   * Returns an {@code ImmutableRangeSet} containing each of the specified disjoint ranges.
-   * Overlapping ranges and empty ranges are forbidden, though adjacent ranges are permitted and
-   * will be merged.
-   *
-   * @throws IllegalArgumentException if any ranges overlap or are empty
-   * @since 21.0
-   */
-  public static <C extends Comparable<?>> ImmutableRangeSet<C> copyOf(Iterable<Range<C>> ranges) {
-    return new ImmutableRangeSet.Builder<C>().addAll(ranges).build();
   }
 
   ImmutableRangeSet(ImmutableList<Range<C>> ranges) {
@@ -234,18 +209,6 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
    */
   @Deprecated
   @Override
-  public void addAll(Iterable<Range<C>> other) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the {@code RangeSet} unmodified.
-   *
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation.
-   */
-  @Deprecated
-  @Override
   public void remove(Range<C> range) {
     throw new UnsupportedOperationException();
   }
@@ -262,24 +225,12 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
     throw new UnsupportedOperationException();
   }
 
-  /**
-   * Guaranteed to throw an exception and leave the {@code RangeSet} unmodified.
-   *
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation.
-   */
-  @Deprecated
-  @Override
-  public void removeAll(Iterable<Range<C>> other) {
-    throw new UnsupportedOperationException();
-  }
-
   @Override
   public ImmutableSet<Range<C>> asRanges() {
     if (ranges.isEmpty()) {
       return ImmutableSet.of();
     }
-    return new RegularImmutableSortedSet<Range<C>>(ranges, Range.<C>rangeLexOrdering());
+    return new RegularImmutableSortedSet<Range<C>>(ranges, Range.RANGE_LEX_ORDERING);
   }
 
   @Override
@@ -288,7 +239,7 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
       return ImmutableSet.of();
     }
     return new RegularImmutableSortedSet<Range<C>>(
-        ranges.reverse(), Range.<C>rangeLexOrdering().reverse());
+        ranges.reverse(), Range.RANGE_LEX_ORDERING.reverse());
   }
 
   @LazyInit
@@ -363,47 +314,6 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
       result = complement = new ImmutableRangeSet<C>(complementRanges, this);
     }
     return result;
-  }
-
-  /**
-   * Returns a new range set consisting of the union of this range set and {@code other}.
-   *
-   * <p>This is essentially the same as {@code TreeRangeSet.create(this).addAll(other)} except it
-   * returns an {@code ImmutableRangeSet}.
-   *
-   * @since 21.0
-   */
-  public ImmutableRangeSet<C> union(RangeSet<C> other) {
-    return unionOf(Iterables.concat(asRanges(), other.asRanges()));
-  }
-
-  /**
-   * Returns a new range set consisting of the intersection of this range set and {@code other}.
-   *
-   * <p>This is essentially the same as {@code
-   * TreeRangeSet.create(this).removeAll(other.complement())} except it returns an {@code
-   * ImmutableRangeSet}.
-   *
-   * @since 21.0
-   */
-  public ImmutableRangeSet<C> intersection(RangeSet<C> other) {
-    RangeSet<C> copy = TreeRangeSet.create(this);
-    copy.removeAll(other.complement());
-    return copyOf(copy);
-  }
-
-  /**
-   * Returns a new range set consisting of the difference of this range set and {@code other}.
-   *
-   * <p>This is essentially the same as {@code TreeRangeSet.create(this).removeAll(other)} except it
-   * returns an {@code ImmutableRangeSet}.
-   *
-   * @since 21.0
-   */
-  public ImmutableRangeSet<C> difference(RangeSet<C> other) {
-    RangeSet<C> copy = TreeRangeSet.create(this);
-    copy.removeAll(other);
-    return copyOf(copy);
   }
 
   /**
@@ -655,11 +565,6 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
     }
 
     @Override
-    ImmutableSortedSet<C> createDescendingSet() {
-      return new DescendingImmutableSortedSet<C>(this);
-    }
-
-    @Override
     boolean isPartialView() {
       return ranges.isPartialView();
     }
@@ -710,47 +615,44 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
    * A builder for immutable range sets.
    */
   public static class Builder<C extends Comparable<?>> {
-    private final List<Range<C>> ranges;
+    private final RangeSet<C> rangeSet;
 
     public Builder() {
-      this.ranges = Lists.newArrayList();
+      this.rangeSet = TreeRangeSet.create();
     }
 
-    // TODO(lowasser): consider adding union, in addition to add, that does allow overlap
-
     /**
-     * Add the specified range to this builder. Adjacent ranges are permitted and will be merged,
-     * but overlapping ranges will cause an exception when {@link #build()} is called.
+     * Add the specified range to this builder.  Adjacent/abutting ranges are permitted, but
+     * empty ranges, or ranges with nonempty overlap, are forbidden.
      *
-     * @throws IllegalArgumentException if {@code range} is empty
+     * @throws IllegalArgumentException if {@code range} is empty or has nonempty intersection with
+     *         any ranges already added to the builder
      */
     @CanIgnoreReturnValue
     public Builder<C> add(Range<C> range) {
-      checkArgument(!range.isEmpty(), "range must not be empty, but was %s", range);
-      ranges.add(range);
+      if (range.isEmpty()) {
+        throw new IllegalArgumentException("range must not be empty, but was " + range);
+      } else if (!rangeSet.complement().encloses(range)) {
+        for (Range<C> currentRange : rangeSet.asRanges()) {
+          checkArgument(
+              !currentRange.isConnected(range) || currentRange.intersection(range).isEmpty(),
+              "Ranges may not overlap, but received %s and %s",
+              currentRange,
+              range);
+        }
+        throw new AssertionError("should have thrown an IAE above");
+      }
+      rangeSet.add(range);
       return this;
     }
 
     /**
-     * Add all ranges from the specified range set to this builder. Adjacent ranges are permitted
-     * and will be merged, but overlapping ranges will cause an exception when {@link #build()} is
-     * called.
+     * Add all ranges from the specified range set to this builder. Duplicate or connected ranges
+     * are permitted, and will be merged in the resulting immutable range set.
      */
     @CanIgnoreReturnValue
     public Builder<C> addAll(RangeSet<C> ranges) {
-      return addAll(ranges.asRanges());
-    }
-
-    /**
-     * Add all of the specified ranges to this builder. Adjacent ranges are permitted and will be
-     * merged, but overlapping ranges will cause an exception when {@link #build()} is called.
-     *
-     * @throws IllegalArgumentException if any inserted ranges are empty
-     * @since 21.0
-     */
-    @CanIgnoreReturnValue
-    public Builder<C> addAll(Iterable<Range<C>> ranges) {
-      for (Range<C> range : ranges) {
+      for (Range<C> range : ranges.asRanges()) {
         add(range);
       }
       return this;
@@ -758,40 +660,9 @@ public final class ImmutableRangeSet<C extends Comparable> extends AbstractRange
 
     /**
      * Returns an {@code ImmutableRangeSet} containing the ranges added to this builder.
-     *
-     * @throws IllegalArgumentException if any input ranges have nonempty overlap
      */
     public ImmutableRangeSet<C> build() {
-      ImmutableList.Builder<Range<C>> mergedRangesBuilder =
-          new ImmutableList.Builder<Range<C>>(ranges.size());
-      Collections.sort(ranges, Range.<C>rangeLexOrdering());
-      PeekingIterator<Range<C>> peekingItr = Iterators.peekingIterator(ranges.iterator());
-      while (peekingItr.hasNext()) {
-        Range<C> range = peekingItr.next();
-        while (peekingItr.hasNext()) {
-          Range<C> nextRange = peekingItr.peek();
-          if (range.isConnected(nextRange)) {
-            checkArgument(
-                range.intersection(nextRange).isEmpty(),
-                "Overlapping ranges not permitted but found %s overlapping %s",
-                range,
-                nextRange);
-            range = range.span(peekingItr.next());
-          } else {
-            break;
-          }
-        }
-        mergedRangesBuilder.add(range);
-      }
-      ImmutableList<Range<C>> mergedRanges = mergedRangesBuilder.build();
-      if (mergedRanges.isEmpty()) {
-        return of();
-      } else if (mergedRanges.size() == 1
-          && Iterables.getOnlyElement(mergedRanges).equals(Range.all())) {
-        return all();
-      } else {
-        return new ImmutableRangeSet<C>(mergedRanges);
-      }
+      return copyOf(rangeSet);
     }
   }
 

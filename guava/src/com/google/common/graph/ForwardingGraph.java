@@ -19,14 +19,14 @@ package com.google.common.graph;
 import java.util.Set;
 
 /**
- * A class to allow {@link Graph} implementations to be backed by a {@link BaseGraph}. This is not
+ * A class to allow {@link Graph} implementations to be backed by {@link ValueGraph}s. This is not
  * currently planned to be released as a general-purpose forwarding class.
  *
  * @author James Sexton
  */
 abstract class ForwardingGraph<N> extends AbstractGraph<N> {
 
-  protected abstract BaseGraph<N> delegate();
+  protected abstract Graph<N> delegate();
 
   @Override
   public Set<N> nodes() {
@@ -54,32 +54,32 @@ abstract class ForwardingGraph<N> extends AbstractGraph<N> {
   }
 
   @Override
-  public Set<N> adjacentNodes(N node) {
+  public Set<N> adjacentNodes(Object node) {
     return delegate().adjacentNodes(node);
   }
 
   @Override
-  public Set<N> predecessors(N node) {
+  public Set<N> predecessors(Object node) {
     return delegate().predecessors(node);
   }
 
   @Override
-  public Set<N> successors(N node) {
+  public Set<N> successors(Object node) {
     return delegate().successors(node);
   }
 
   @Override
-  public int degree(N node) {
+  public int degree(Object node) {
     return delegate().degree(node);
   }
 
   @Override
-  public int inDegree(N node) {
+  public int inDegree(Object node) {
     return delegate().inDegree(node);
   }
 
   @Override
-  public int outDegree(N node) {
+  public int outDegree(Object node) {
     return delegate().outDegree(node);
   }
 }

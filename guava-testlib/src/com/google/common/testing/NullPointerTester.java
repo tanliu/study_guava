@@ -42,7 +42,6 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
-import javax.annotation.CheckForNull;
 import javax.annotation.Nullable;
 import junit.framework.Assert;
 import junit.framework.AssertionFailedError;
@@ -90,16 +89,6 @@ public final class NullPointerTester {
    */
   public NullPointerTester ignore(Method method) {
     ignoredMembers.add(checkNotNull(method));
-    return this;
-  }
-
-  /**
-   * Ignore {@code constructor} in the tests that follow. Returns this object.
-   *
-   * @since 22.0
-   */
-  public NullPointerTester ignore(Constructor<?> constructor) {
-    ignoredMembers.add(checkNotNull(constructor));
     return this;
   }
 
@@ -287,7 +276,7 @@ public final class NullPointerTester {
       // a file.
       String visiblePackage = Reflection.getPackageName(cls);
       ImmutableList.Builder<Method> builder = ImmutableList.builder();
-      for (Class<?> type : TypeToken.of(cls).getTypes().rawTypes()) {
+      for (Class<?> type : TypeToken.of(cls).getTypes().classes().rawTypes()) {
         if (!Reflection.getPackageName(type).equals(visiblePackage)) {
           break;
         }
@@ -476,8 +465,7 @@ public final class NullPointerTester {
   }
 
   private static boolean isNullable(Parameter param) {
-    return param.isAnnotationPresent(CheckForNull.class)
-        || param.isAnnotationPresent(Nullable.class);
+    return param.isAnnotationPresent(Nullable.class);
   }
 
   private boolean isIgnored(Member member) {
@@ -488,7 +476,7 @@ public final class NullPointerTester {
    * Returns true if the the given member is a method that overrides {@link Object#equals(Object)}.
    *
    * <p>The documentation for {@link Object#equals} says it should accept null, so don't require an
-   * explicit {@code @Nullable} annotation (see <a
+   * explicit {@link @Nullable} annotation (see <a
    * href="https://github.com/google/guava/issues/1819">#1819</a>).
    *
    * <p>It is not necessary to consider visibility, return type, or type parameter declarations. The

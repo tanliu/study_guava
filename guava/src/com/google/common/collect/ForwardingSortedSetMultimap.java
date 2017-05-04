@@ -22,13 +22,10 @@ import java.util.SortedSet;
 import javax.annotation.Nullable;
 
 /**
- * A sorted set multimap which forwards all its method calls to another sorted set multimap.
- * Subclasses should override one or more methods to modify the behavior of the backing multimap as
- * desired per the <a href="http://en.wikipedia.org/wiki/Decorator_pattern">decorator pattern</a>.
- *
- * <p><b>{@code default} method warning:</b> This class does <i>not</i> forward calls to {@code
- * default} methods. Instead, it inherits their default implementations. When those implementations
- * invoke methods, they invoke methods on the {@code ForwardingSortedSetMultimap}.
+ * A sorted set multimap which forwards all its method calls to another sorted
+ * set multimap. Subclasses should override one or more methods to modify the
+ * behavior of the backing multimap as desired per the <a
+ * href="http://en.wikipedia.org/wiki/Decorator_pattern">decorator pattern</a>.
  *
  * @author Kurt Alfred Kluever
  * @since 3.0
